@@ -1144,6 +1144,222 @@ bool expr() {
 bool rval() {
   return rval2() && rvalI();
 }
+// ravlI ::= "||" rval2 rvalI | epsilon
+bool rvalI() {
+  if (isIn(CurTok.type, first_rvalI)){
+    getNextToken();
+    return rval2() && rvalI();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_rvalI)){
+      return true;
+    }
+    else {
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected '||' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+
+// rval2 ::= rval3 rval2I
+bool rval2() {
+  return rval3() && rval2I();
+}
+
+// rval2I ::= "&&" rval3 rval2I | epsilon
+bool rval2I(){
+  if (isIn(CurTok.type, first_rval2I)){
+    getNextToken();
+    return rval3() && rval2I();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_rval2I)){
+      return true;
+    }
+    else {
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected '&&' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+
+// rval3 ::= rval4 rval3I
+bool rval3() {
+  return rval4 && rval3I;
+}
+
+// rval3I ::= "==" rval4 rval3I | "!=" rval4 rval3I | epsilon
+bool rval3I() {
+  if (isIn(CurTok.type, first_rval3I)){
+    getNextToken();
+    return rval4() && rval3I();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_rval3I)){
+      return true;
+    }
+    else {
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected '==' or '!=' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+
+// rval4 ::= rval5 rval4I
+bool rval4(){
+  return rval5() && rval4I();
+}
+// rval4I ::= "<=" rval5 rval4I | "<" rval5 rval4I | ">=" rval5 rval4I | ">" rval5 rval4I | epsilon
+bool rval4I() {
+  if (isIn(CurTok.type, first_rval4I)){
+    getNextToken();
+    return rval5() && rval4I();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_rval4I)){
+      return true;
+    }
+    else {
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected '<=' or '<' or '>=' or '>' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+
+// rval5 ::= rval6 rval5I
+bool rval5(){
+  return rval6 && rval5I();
+}
+// rval5I ::= "+" rval6 rval5I | "-" rval6 rval5I | epsilon
+bool rval5I(){
+  if (isIn(CurTok.type, first_rval5I)){
+    getNextToken();
+    return rval6() && rval5I();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_rval5I)){
+      return true;
+    }
+    else {
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected '+' or '-' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+// rval6 ::= rval7 rval6I
+bool rval6() {
+  return rval7() && rval6I();
+}
+//rval6I ::= "*" rval7 rval6I | "/" rval7 rval6I | "%" rval7 rval6I | epsilon
+bool rval6I(){
+  if (isIn(CurTok.type, first_rval6I)){
+    getNextToken();
+    return rval7() && rval6I();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_rval6I)){
+      return true;
+    }
+    else {
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected '*' or '/' or '%' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+// rval7 ::= "-" rval8 | "!" rval8 | rval8
+bool rval7(){
+  if (match(MINUS)){
+    return rval8();
+  }
+  else{
+    if (match(NOT)){
+      return rval8();
+    }
+    else{
+      return rval8();
+    }
+  }
+}
+
+// rval8 ::= "(" expr ")" | IDENT | IDENT "(" args ")" | INT_LIT | FLOAT_LIT | BOOL_LIT 
+bool rval8(){
+  if (match(LPAR)){
+    if (!expr){
+      if(!errorReported)
+        {errs()<<"Syntax error: Incorrect expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    if (!match(RPAR)){
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    return true;
+  }
+  else{
+    TOKEN look1 = CurTok;
+    getNextToken();
+    if (look1.type == IDENT & CurTok.type == LPAR){
+      //do stuff
+      if (!args()){
+        if(!errorReported)
+          {errs()<<"Syntax error: Incorrect args at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        errorReported = true;
+        return false;
+      }
+      if (!match(RPAR)){
+        if(!errorReported)
+          {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        errorReported = true;
+        return false;
+      }
+      return true;
+    }
+    else{
+      putBackToken(CurTok);
+      CurTok = look1;
+      if (match(IDENT)){
+        return true;
+      }
+      else {
+        if (match(INT_LIT)){
+          return true;
+        }
+        else {
+          if (match(FLOAT_LIT)){
+            return true;
+          }
+          else {
+            if (match(BOOL_LIT)){
+              return true;
+            }
+            else {
+              if(!errorReported)
+                {errs()<<"Syntax error: Expected '(' or Identifier or INT_LIT or BOOL_LIT or FLOAT_LIT at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+              errorReported = true;
+              return false;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 // program ::= extern_list decl_list
 static void parser() {
   // add body
