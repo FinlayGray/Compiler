@@ -911,6 +911,154 @@ bool local_decl(){
 }
 
 // stmt_list ::= stmt stmt_list |  epsilon
+bool stmt_list() {
+  if (isIn(CurTok.type, first_stmt_list)){
+    return stmt() && stmt_list();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_stmt_list)){
+      return true;
+    }
+    else {
+      if (!errorReported)
+        {errs()<<"Syntax error: Invalid statement list structure found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+
+//stmt ::= expr_stmt |  block |  if_stmt |  while_stmt |  return_stmt
+bool stmt(){
+  if (isIn(CurTok.type, first_expr_stmt)){
+    return expr_stmt();
+  }
+  else {
+    if (isIn(CurTok.type, first_block)){
+      return block();
+    }
+    else {
+      if (isIn(CurTok.type, first_if_stmt)){
+        return if_stmt();
+      }
+      else {
+        if (isIn(CurTok.type, first_while_stmt)){
+          return while_stmt();
+        }
+        else {
+          if (isIn(CurTok.type, first_return_stmt)){
+            return return_stmt();
+          }
+          else {
+            if (!errorReported)
+              {errs()<<"Syntax error: Invalid statement structure found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+            errorReported = true;
+            return false;
+          }
+        }
+      }
+    }
+  }
+}
+
+// expr_stmt ::= expr ";" |  ";"
+bool expr_stmt(){
+  if (isIn(CurTok.type, first_expr)){
+    expr();
+    if (!match(SC)){
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    return true;
+  }
+  else {
+    if (!match(SC)){
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    return true;
+  }
+}
+
+// while_stmt ::= "while" "(" expr ")" stmt 
+bool while_stmt(){
+  if (!match(WHILE)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected 'while' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(LPAR)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected '(' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!expr()){
+    if(!errorReported)
+        {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(RPAR)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!stmt()){
+    if(!errorReported)
+        {errs()<<"Syntax error: Invalid statement at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  return true;
+}
+
+//if_stmt ::= "if" "(" expr ")" block else_stmt
+bool if_stmt(){
+  if (!match(IF)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected 'if' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(LPAR)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected '(' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!expr()){
+    if(!errorReported)
+        {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(RPAR)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!block()){
+    if(!errorReported)
+        {errs()<<"Syntax error: Invalid block statment at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!else_stmt()){
+    if(!errorReported)
+        {errs()<<"Syntax error: Invalid else statement at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  return true;
+}
 
 // program ::= extern_list decl_list
 static void parser() {
