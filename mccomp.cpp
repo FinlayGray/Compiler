@@ -518,7 +518,7 @@ bool else_stmt();
 bool return_stmt();
 bool expr();
 bool rval();
-bool ravlI();
+bool rvalI();
 bool rval2();
 bool rval2I();
 bool rval3();
@@ -1059,7 +1059,91 @@ bool if_stmt(){
   }
   return true;
 }
+// else_stmt  ::= "else" block |  epsilon
+bool else_stmt(){
+  if (isIn(CurTok.type, first_else_stmt)){
+    getNextToken();
+    if (!block()){
+      if(!errorReported)
+          {errs()<<"Syntax error: Invalid block statment at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    return true;
+  }
+  else {
+    if (isIn(CurTok.type, Follow_else_stmt)){
+      return true;
+    }
+    else {
+      if(!errorReported)
+          {errs()<<"Syntax error: Invalid else statment at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
 
+// return_stmt ::= "return" ";" |  "return" expr ";"
+bool return_stmt(){
+  if (!match(RETURN)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected 'return' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (CurTok.type == SC){
+    getNextToken();
+    return true;
+  }
+  else {
+    if (!expr()){
+      if(!errorReported)
+        {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    if (!match(SC)){
+      if(!errorReported)
+          {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    return true;
+  }
+}
+
+// expr ::= IDENT "=" expr | rval 
+bool expr() {
+  TOKEN look1 = CurTok;
+  getNextToken();
+  if (look1.type == IDENT & CurTok.type == ASSIGN){
+    getNextToken();
+    if (!expr()) {
+      if(!errorReported)
+          {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    return true;
+  }
+  putBackToken(CurTok);
+  CurTok = look1;
+  if (isIn(CurTok.type, first_rval7_to_rval)){
+    return rval();
+  } else{
+    if(!errorReported)
+        {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+
+}
+
+// rval ::= rval2 rvalI
+bool rval() {
+  return rval2() && rvalI();
+}
 // program ::= extern_list decl_list
 static void parser() {
   // add body
