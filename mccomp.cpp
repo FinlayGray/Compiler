@@ -799,7 +799,118 @@ bool param_list() {
     return false;
   }
 }
+// param_listI ::= "," param param_listI | epsilon
+bool param_listI(){
+  if (isIn(CurTok.type, first_param_listI)){
+    getNextToken(); // consumes ','
+    return param() && param_listI();
+  }
+  else{
+    if (isIn(CurTok.type, Follow_param_listI)){
+      return true;
+    }
+    else {
+      if (!errorReported)
+          {errs()<<"Syntax error: Invalid structure of parameters found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+// param ::= var_type IDENT
+bool param() {
+  if (isIn(CurTok.type, first_param)){
+    var_type();
+    if (!match(IDENT)){
+      if (!errorReported)
+          {errs()<<"Syntax error: Invalid Identifier found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    return true;
+  }
+  else {
+      if (!errorReported)
+        {errs()<<"Syntax error: Invalid declaration of parameter found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+  }
+}
 
+// block ::= "{" local_decls stmt_list "}"
+bool block() {
+  if (!match(LBRA)){
+    if (!errorReported)
+        {errs()<<"Syntax error: Expected '{' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!local_decls()){
+    if (!errorReported)
+        {errs()<<"Syntax error: Invalid token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!stmt_list){
+    if (!errorReported)
+        {errs()<<"Syntax error: Invalid token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(RBRA)){
+    if (!errorReported)
+        {errs()<<"Syntax error: Expected '}' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+}
+
+//local_decls ::= local_decl local_decls | epsilon
+bool local_decls(){
+  if (isIn(CurTok.type, first_local_decl)){
+    return local_decl() && local_decls();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_local_decls)){
+      return true;
+    }
+    else {
+      if (!errorReported)
+        {errs()<<"Syntax error: Invalid local declaration at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+
+// local_decl ::= var_type IDENT ";"
+bool local_decl(){
+  if (isIn(CurTok.type, first_local_decl)){
+    var_type();
+    if (!match(IDENT)){
+      if (!errorReported)
+          {errs()<<"Syntax error: Invalid Identifier found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    if (!match(SC)){
+      if(!errorReported)
+        {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+
+    return true;
+  }
+  else {
+      if (!errorReported)
+        {errs()<<"Syntax error: Invalid local declaration found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+  }
+}
+
+// stmt_list ::= stmt stmt_list |  epsilon
 
 // program ::= extern_list decl_list
 static void parser() {
