@@ -37,6 +37,7 @@ using namespace llvm;
 using namespace llvm::sys;
 
 FILE *pFile;
+static bool errorReported = false;
 
 //===----------------------------------------------------------------------===//
 // Lexer
@@ -83,7 +84,7 @@ enum TOKEN_TYPE {
   // operators
   PLUS = int('+'),    // addition or unary plus
   MINUS = int('-'),   // substraction or unary negative
-  ASTERIX = int('*'), // multiplication
+  ASTERIX = int('*'), // multiplication 
   DIV = int('/'),     // division
   MOD = int('%'),     // modular
   NOT = int('!'),     // unary negation
@@ -423,7 +424,7 @@ std::vector<TOKEN_TYPE> first_arg_list = {MINUS, NOT, LPAR, IDENT, INT_LIT, FLOA
 std::vector<TOKEN_TYPE> first_args = {MINUS, NOT, LPAR, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT}; // -, !, (, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT, ϵ NULLABLE
 std::vector<TOKEN_TYPE> first_rval8 = {LPAR, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT}; // (, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT
 std::vector<TOKEN_TYPE> first_rval7_to_rval = {MINUS, NOT, LPAR, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT}; // -, !, (, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT
-std::vector<TOKEN_TYPE> first_rval6I = {MUL, DIV, MOD}; // *, /, %, ϵ NULLABLE
+std::vector<TOKEN_TYPE> first_rval6I = {ASTERIX, DIV, MOD}; // *, /, %, ϵ NULLABLE
 std::vector<TOKEN_TYPE> first_rval5I = {PLUS, MINUS}; // +, -, ϵ NULLABLE
 std::vector<TOKEN_TYPE> first_rval4I = {LE, LT, GE, GT}; // <=, <, >=, >, ϵ NULLABLE
 std::vector<TOKEN_TYPE> first_rval3I = {EQ, NE}; // ==, !=, ϵ NULLABLE
@@ -456,6 +457,14 @@ std::vector<TOKEN_TYPE> first_extern_listI = {EXTERN}; // "extern", ϵ NULLABLE
 std::vector<TOKEN_TYPE> first_extern_list = {EXTERN}; // "extern"
 
 
+//===----------------------------------------------------------------------===//
+// Follow Sets
+//===----------------------------------------------------------------------===//
+
+
+
+
+
 
 
 //===----------------------------------------------------------------------===//
@@ -474,7 +483,7 @@ static bool isIn(int type, vector<TOKEN_TYPE> l)
 
 bool match(TOKEN_TYPE tok) {
   if(Curtok.type == tok) {
-    getNextToken(); //consume token
+    getNextToken();
     return true;
   }
   else
@@ -490,6 +499,7 @@ bool decl_list();
 bool decl_listI();
 bool decl();
 bool var_decl();
+bool var_type();
 bool type_spec();
 bool fun_decl();
 bool params();
@@ -528,12 +538,269 @@ bool arg_listI();
 
 
 
-
+// extern externlistI
 bool extern_list() {
   return pas_extern() && extern_listI();
 }
 
-bool 
+// extern extern_listI | epsilon
+bool extern_listI(){
+  if (isIn(CurTok.type, first_extern)){
+    return pas_extern() && extern_listI();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_extern_listI)){
+      return true;
+    }
+    else {
+      if (!errorReported)
+          {errs()<<"Syntax error: Invalid token "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+// "extern" type_spec IDENT "(" params ")" ";"
+bool pas_extern(){
+  if (!match(EXTERN)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected  `extern`  at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (isIn(CurTok.type, first_type_spec)){
+    type_spec();
+    
+  } else {
+    if(!errorReported)
+        {errs()<<"Syntax error: Invalid type spec token" <<CurTok.lexeme<<" at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+  }
+  if (!match(IDENT)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected an Identifier at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(LPAR)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected '(' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!params()){
+      if(!errorReported)
+        {errs()<<"Syntax error: Invalid params token" <<CurTok.lexeme<<" at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(RPAR)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(SC)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  return true;
+}
+
+// decl_list ::= decl decl_listI
+bool decl_list() {
+  if (isIn(CurTok.type, first_decl)){
+    return decl() && decl_listI();
+  }
+}
+
+// decl_listI ::= decl decl_listI | epsilon
+bool decl_listI() {
+  if (isIn(CurTok.type, first_decl)){
+    return decl() && decl_listI();
+  }
+  else {
+    if (isIn(CurTok.type, Follow_decl_listI)){
+      return true;
+    }
+    else {
+      if (!errorReported)
+          {errs()<<"Syntax error: Invalid decl_listI token "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+
+
+//decl ::= var_decl |  fun_decl
+bool decl() {
+  if (isIn(CurTok.type, first_var_decl)){
+    return var_decl();
+  }
+  else {
+    if (isIn(CurTok.type, first_fun_decl)){
+      return fun_decl();
+    }
+    else {
+      if (!errorReported)
+          {errs()<<"Syntax error: Invalid decl token "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+
+//var_decl ::= var_type IDENT ";" 
+bool var_decl() {
+  if (isIn(CurTok.type, first_var_type)){
+    var_type();
+  }else {
+    if (!errorReported)
+          {errs()<<"Syntax error: Expected var_type token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(IDENT)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected an Identifier at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+
+  if (!match(SC)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  return true;
+}
+//COULD CHANGE 
+// to do match void, else push back and match vartype
+//type_spec ::= "void" |  var_type     
+bool type_spec() {
+  if (isIn(CurTok.type, first_type_spec)){
+    getNextToken();
+    return true;
+  }
+  else {
+    if(!errorReported)
+        {errs()<<"Syntax error: Invalid type_spec token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+}
+
+// var_type  ::= "int" |  "float" |  "bool"
+bool var_type() {
+  if (match(INT_TOK)){
+      return true;
+    }
+    else {
+      if (match(FLOAT_TOK)){
+        return true;
+      }
+      else {
+        if (match(BOOL_TOK)){
+          return true;
+        }
+        else {
+            if(!errorReported)
+                {errs()<<"Syntax error: Expected an Identifier at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+            errorReported = true;
+            return false;
+        }
+      }
+    }
+}
+
+//fun_decl ::= type_spec IDENT "(" params ")" block
+bool fun_decl() {
+  if (isIn(CurTok.type, first_type_spec)){
+    type_spec();
+  }else {
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected an Identifier at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(IDENT)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected an Identifier at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(LPAR)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected '(' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!params()){
+      if(!errorReported)
+        {errs()<<"Syntax error: Invalid params token" <<CurTok.lexeme<<" at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (!match(RPAR)){
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  if (isIn(CurTok.type, first_block)){
+    block();
+  }else {
+    if(!errorReported)
+        {errs()<<"Syntax error: Expected block statement starting with '{' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+  return true;
+
+}
+
+//params ::= param_list | "void" | epsilon
+bool params() {
+  if (isIn(CurTok.type, first_param_list)){
+    return param_list;
+  }
+  else {
+    if (match(VOID_TOK)){
+      return true;
+    }
+    else{
+      if (isIn(CurTok.type, Follow_params)){
+        return true;
+      }
+      else{
+        if(!errorReported)
+          {errs()<<"Syntax error: Invalid params statement at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        errorReported = true;
+        return false;
+      }
+    }
+  }
+}
+
+// param_list ::= param param_listI
+bool param_list() {
+  if (isIn(CurTok.type, first_param)){
+    return param() && param_listI();
+  }
+  else {
+    if (!errorReported)
+          {errs()<<"Syntax error: Invalid token "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    return false;
+  }
+}
+
+
 // program ::= extern_list decl_list
 static void parser() {
   // add body
