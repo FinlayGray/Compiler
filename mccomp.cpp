@@ -1360,6 +1360,60 @@ bool rval8(){
   }
 }
 
+// args ::= arg_list |  epsilon
+bool args() {
+    if (isIn(CurTok.type, first_arg_list)){
+      if (!arg_list()){
+        if(!errorReported)
+            {errs()<<"Syntax error: Invalid argument list at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        errorReported = true;
+        return false;
+      }
+      return true;
+    }
+    else{
+      if (isIn(CurTok.type, Follow_args)){
+        return true;
+      }
+      else{
+          
+        if(!errorReported)
+            {errs()<<"Syntax error: Invalid arguments at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        errorReported = true;
+        return false;
+      }
+    }
+}
+
+//arg_list ::= expr arg_listI
+bool arg_list(){
+  return expr() && arg_listI();
+}
+
+//arg_listI ::= "," expr arg_listI | epsilon
+bool arg_listI(){
+  if (isIn(CurTok.type, first_arg_listI)){
+    if (!match(COMMA)){
+      if(!errorReported)
+            {errs()<<"Syntax error: Expected ',' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+    return expr() && arg_listI();
+  }
+  else{
+    if (isIn(CutTok.type, Follow_arg_listI)){
+      return true;
+    }
+    else{
+      if(!errorReported)
+            {errs()<<"Syntax error: Invalid token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+      errorReported = true;
+      return false;
+    }
+  }
+}
+
 // program ::= extern_list decl_list
 static void parser() {
   // add body
