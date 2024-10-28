@@ -461,9 +461,21 @@ std::vector<TOKEN_TYPE> first_extern_list = {EXTERN}; // "extern"
 // Follow Sets
 //===----------------------------------------------------------------------===//
 
-
-
-
+std::vector<TOKEN_TYPE> Follow_rvalI = {SC,RPAR,COMMA};
+std::vector<TOKEN_TYPE> Follow_rval2I = {SC, RPAR, COMMA, OR};
+std::vector<TOKEN_TYPE> Follow_rval3I = {SC, RPAR, COMMA, OR, AND};
+std::vector<TOKEN_TYPE> Follow_rval4I = {SC, RPAR, COMMA, OR, AND, EQ, NE};
+std::vector<TOKEN_TYPE> Follow_rval5I = {SC, RPAR, COMMA, OR, AND, EQ, NE, LE, LT, GE, GT};
+std::vector<TOKEN_TYPE> Follow_rval6I = {SC, RPAR, COMMA, OR, AND, EQ, NE, LE, LT, GE, GT, PLUS, MINUS};
+std::vector<TOKEN_TYPE> Follow_args = {RPAR};
+std::vector<TOKEN_TYPE> Follow_arg_listI = {RPAR};
+std::vector<TOKEN_TYPE> Follow_stmt_list = {RBRA};
+std::vector<TOKEN_TYPE> Follow_else_stmt = {MINUS, NOT, LPAR, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT, SC, LBRA, IF, WHILE, RETURN, RBRA};
+std::vector<TOKEN_TYPE> Follow_local_decls = {MINUS, NOT, LPAR, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT, SC, LBRA, IF, WHILE, RETURN, RBRA};
+std::vector<TOKEN_TYPE> Follow_params = {RBRA};
+std::vector<TOKEN_TYPE> Follow_param_listI = {RBRA};
+std::vector<TOKEN_TYPE> Follow_decl_listI = {EOF_TOK};
+std::vector<TOKEN_TYPE> Follow_extern_listI = {INT_TOK, FLOAT_TOK, BOOL_TOK, VOID_TOK};
 
 
 
@@ -1417,6 +1429,7 @@ bool arg_listI(){
 // program ::= extern_list decl_list
 static void parser() {
   // add body
+  return extern_list() && decl_list();
 }
 
 //===----------------------------------------------------------------------===//
