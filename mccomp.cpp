@@ -385,6 +385,13 @@ static TOKEN getNextToken() {
 
 static void putBackToken(TOKEN tok) { tok_buffer.push_front(tok); }
 
+static void clearTokBuffer() {  //clear the buffer at the end
+  while(tok_buffer.size() != 0) 
+  {
+    tok_buffer.pop_front();
+  } 
+}
+
 //===----------------------------------------------------------------------===//
 // AST nodes
 //===----------------------------------------------------------------------===//
@@ -472,8 +479,8 @@ std::vector<TOKEN_TYPE> Follow_arg_listI = {RPAR};
 std::vector<TOKEN_TYPE> Follow_stmt_list = {RBRA};
 std::vector<TOKEN_TYPE> Follow_else_stmt = {MINUS, NOT, LPAR, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT, SC, LBRA, IF, WHILE, RETURN, RBRA};
 std::vector<TOKEN_TYPE> Follow_local_decls = {MINUS, NOT, LPAR, IDENT, INT_LIT, FLOAT_LIT, BOOL_LIT, SC, LBRA, IF, WHILE, RETURN, RBRA};
-std::vector<TOKEN_TYPE> Follow_params = {RBRA};
-std::vector<TOKEN_TYPE> Follow_param_listI = {RBRA};
+std::vector<TOKEN_TYPE> Follow_params = {RPAR};
+std::vector<TOKEN_TYPE> Follow_param_listI = {RPAR};
 std::vector<TOKEN_TYPE> Follow_decl_listI = {EOF_TOK};
 std::vector<TOKEN_TYPE> Follow_extern_listI = {INT_TOK, FLOAT_TOK, BOOL_TOK, VOID_TOK};
 
@@ -493,14 +500,16 @@ static bool isIn(int type, std::vector<TOKEN_TYPE> l)
   return false;
 }
 
-bool match(TOKEN_TYPE tok) {
-  if(CurTok.type == tok) {
-    getNextToken();
+bool match(TOKEN_TYPE token)
+{
+  if(CurTok.type == token)
+  {
+    getNextToken(); //consume token
     return true;
   }
   else
     return false;
-  }
+}
 
 /* Add function calls for each production */
 bool program();
@@ -566,7 +575,7 @@ bool extern_listI(){
     }
     else {
       if (!errorReported)
-          {errs()<<"Syntax error: Invalid token "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+          {errs()<<"Syntax error: Invalid token6 "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
       errorReported = true;
       return false;
     }
@@ -574,18 +583,24 @@ bool extern_listI(){
 }
 // "extern" type_spec IDENT "(" params ")" ";"
 bool pas_extern(){
-  if (!match(EXTERN)){
+  fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
+             CurTok.type);
+  if (!match(EXTERN)){ //upadted this d
+    // getNextToken();
+    
     if(!errorReported)
         {errs()<<"Syntax error: Expected  `extern`  at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
     return false;
   }
+
+
   if (isIn(CurTok.type, first_type_spec)){
     type_spec();
     
   } else {
     if(!errorReported)
-        {errs()<<"Syntax error: Invalid type spec token" <<CurTok.lexeme<<" at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        {errs()<<"Syntax error: Invalid type spec token, found" <<CurTok.lexeme<<" at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
       errorReported = true;
       return false;
   }
@@ -653,10 +668,21 @@ bool decl_listI() {
 
 //decl ::= var_decl |  fun_decl
 bool decl() {
-  if (isIn(CurTok.type, first_var_decl)){
+  TOKEN look1 = CurTok;
+  getNextToken();
+  TOKEN look2 = CurTok;
+  getNextToken();
+  if (isIn(CurTok.type, first_var_decl) && look2.type == SC){
+    putBackToken(CurTok);
+    putBackToken(look2);
+    CurTok = look1;
     return var_decl();
   }
   else {
+    putBackToken(CurTok);
+    putBackToken(look2);
+    CurTok = look1;
+      
     if (isIn(CurTok.type, first_fun_decl)){
       return fun_decl();
     }
@@ -809,7 +835,7 @@ bool param_list() {
   }
   else {
     if (!errorReported)
-          {errs()<<"Syntax error: Invalid token "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+          {errs()<<"Syntax error: Invalid token5 "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
     return false;
   }
@@ -862,13 +888,13 @@ bool block() {
   }
   if (!local_decls()){
     if (!errorReported)
-        {errs()<<"Syntax error: Invalid token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        {errs()<<"Syntax error: Invalid token4 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
     return false;
   }
   if (!stmt_list()){
     if (!errorReported)
-        {errs()<<"Syntax error: Invalid token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        {errs()<<"Syntax error: Invalid token3 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
     return false;
   }
@@ -1133,7 +1159,7 @@ bool return_stmt(){
 bool expr() {
   TOKEN look1 = CurTok;
   getNextToken();
-  if (look1.type == IDENT & CurTok.type == ASSIGN){
+  if (look1.type == IDENT && CurTok.type == ASSIGN){
     getNextToken();
     if (!expr()) {
       if(!errorReported)
@@ -1141,10 +1167,14 @@ bool expr() {
       errorReported = true;
       return false;
     }
+    // putBackToken(CurTok); //abcdefg
     return true;
   }
   putBackToken(CurTok);
   CurTok = look1;
+  
+  fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
+            CurTok.type);
   if (isIn(CurTok.type, first_rval7_to_rval)){
     return rval();
   } else{
@@ -1329,12 +1359,14 @@ bool rval8(){
   else{
     TOKEN look1 = CurTok;
     getNextToken();
-    if (look1.type == IDENT & CurTok.type == LPAR){
+    if (look1.type == IDENT && CurTok.type == LPAR){
       //do stuff
+      getNextToken(); //guess
       if (!args()){
         if(!errorReported)
           {errs()<<"Syntax error: Incorrect args at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
         errorReported = true;
+        
         return false;
       }
       if (!match(RPAR)){
@@ -1403,11 +1435,14 @@ bool args() {
 
 //arg_list ::= expr arg_listI
 bool arg_list(){
+
   return expr() && arg_listI();
 }
 
 //arg_listI ::= "," expr arg_listI | epsilon
 bool arg_listI(){
+  fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
+            CurTok.type);
   if (isIn(CurTok.type, first_arg_listI)){
     if (!match(COMMA)){
       if(!errorReported)
@@ -1423,27 +1458,38 @@ bool arg_listI(){
     }
     else{
       if(!errorReported)
-            {errs()<<"Syntax error: Invalid token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+            {errs()<<"Syntax error: Invalid token2 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
       errorReported = true;
       return false;
     }
   }
 }
 
-// program ::= extern_list decl_list
+// program ::= extern_list decl_list | decl_list
 bool program(){
-  return extern_list() && decl_list();
+  if (isIn(CurTok.type, first_extern_list)){
+    
+    return extern_list() && decl_list();
+  }
+  else {
+    return decl_list();
+  }
+
+  
 }
 
 static void parser() {
   getNextToken();
+  fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
+            CurTok.type);
   if (program() && CurTok.type == EOF_TOK){
     std::cout<<"Parsing successful."<<std::endl;
     // return true;
+
   }
   else{
     if(!errorReported)
-            {errs()<<"Syntax error: Invalid token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+            {errs()<<"Syntax error: Invalid token1 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
     // return false;
   }
@@ -1486,18 +1532,28 @@ int main(int argc, char **argv) {
   columnNo = 1;
 
   // get the first token
-  getNextToken();
-  while (CurTok.type != EOF_TOK) {
-    fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
-            CurTok.type);
-    getNextToken();
-  }
+  // getNextToken();
+  // while (CurTok.type != EOF_TOK) {
+  //   fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
+  //           CurTok.type);
+  //   getNextToken();
+  // }
   fprintf(stderr, "Lexer Finished\n");
+  
+ 
 
   // Make the module, which holds all the code.
   TheModule = std::make_unique<Module>("mini-c", TheContext);
 
+  // fseek(pFile,0,SEEK_SET);
+  // clearTokBuffer(); //clear token buffer before re-reading file and starting parsing
+
+  // lineNo = 1;
+  // columnNo = 1;
+//  fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
+//             CurTok.type);
   // Run the parser now.
+  // getNextToken();
   parser();
   fprintf(stderr, "Parsing Finished\n");
 
