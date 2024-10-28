@@ -396,7 +396,7 @@ public:
   virtual Value *codegen() = 0;
   virtual std::string to_string() const {return "";};
 };
-Recursive Descent Parser - Function call for each production
+// Recursive Descent Parser - Function call for each production
 /// IntASTnode - Class for integer literals like 1, 2, 10,
 class IntASTnode : public ASTnode {
   int Val;
@@ -483,7 +483,7 @@ std::vector<TOKEN_TYPE> Follow_extern_listI = {INT_TOK, FLOAT_TOK, BOOL_TOK, VOI
 // Recursive Descent Parser - Function call for each production
 //===----------------------------------------------------------------------===//
 
-static bool isIn(int type, vector<TOKEN_TYPE> l)
+static bool isIn(int type, std::vector<TOKEN_TYPE> l)
 {
   for(int i = 0; i < l.size(); i++)
   {
@@ -494,7 +494,7 @@ static bool isIn(int type, vector<TOKEN_TYPE> l)
 }
 
 bool match(TOKEN_TYPE tok) {
-  if(Curtok.type == tok) {
+  if(CurTok.type == tok) {
     getNextToken();
     return true;
   }
@@ -626,6 +626,9 @@ bool pas_extern(){
 bool decl_list() {
   if (isIn(CurTok.type, first_decl)){
     return decl() && decl_listI();
+  }
+  else {
+    return false;
   }
 }
 
@@ -779,7 +782,7 @@ bool fun_decl() {
 //params ::= param_list | "void" | epsilon
 bool params() {
   if (isIn(CurTok.type, first_param_list)){
-    return param_list;
+    return param_list();
   }
   else {
     if (match(VOID_TOK)){
@@ -863,7 +866,7 @@ bool block() {
     errorReported = true;
     return false;
   }
-  if (!stmt_list){
+  if (!stmt_list()){
     if (!errorReported)
         {errs()<<"Syntax error: Invalid token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
@@ -875,6 +878,7 @@ bool block() {
     errorReported = true;
     return false;
   }
+  return true;
 }
 
 //local_decls ::= local_decl local_decls | epsilon
@@ -1201,7 +1205,7 @@ bool rval2I(){
 
 // rval3 ::= rval4 rval3I
 bool rval3() {
-  return rval4 && rval3I;
+  return rval4() && rval3I();
 }
 
 // rval3I ::= "==" rval4 rval3I | "!=" rval4 rval3I | epsilon
@@ -1248,7 +1252,7 @@ bool rval4I() {
 
 // rval5 ::= rval6 rval5I
 bool rval5(){
-  return rval6 && rval5I();
+  return rval6() && rval5I();
 }
 // rval5I ::= "+" rval6 rval5I | "-" rval6 rval5I | epsilon
 bool rval5I(){
@@ -1308,7 +1312,7 @@ bool rval7(){
 // rval8 ::= "(" expr ")" | IDENT | IDENT "(" args ")" | INT_LIT | FLOAT_LIT | BOOL_LIT 
 bool rval8(){
   if (match(LPAR)){
-    if (!expr){
+    if (!expr()){
       if(!errorReported)
         {errs()<<"Syntax error: Incorrect expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
       errorReported = true;
@@ -1414,7 +1418,7 @@ bool arg_listI(){
     return expr() && arg_listI();
   }
   else{
-    if (isIn(CutTok.type, Follow_arg_listI)){
+    if (isIn(CurTok.type, Follow_arg_listI)){
       return true;
     }
     else{
@@ -1427,9 +1431,22 @@ bool arg_listI(){
 }
 
 // program ::= extern_list decl_list
-static void parser() {
-  // add body
+bool program(){
   return extern_list() && decl_list();
+}
+
+static void parser() {
+  getNextToken();
+  if (program() && CurTok.type == EOF_TOK){
+    std::cout<<"Parsing successful."<<std::endl;
+    // return true;
+  }
+  else{
+    if(!errorReported)
+            {errs()<<"Syntax error: Invalid token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+    errorReported = true;
+    // return false;
+  }
 }
 
 //===----------------------------------------------------------------------===//
