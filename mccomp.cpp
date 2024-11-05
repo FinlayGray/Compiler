@@ -396,6 +396,26 @@ static void clearTokBuffer() {  //clear the buffer at the end
 // AST nodes
 //===----------------------------------------------------------------------===//
 
+static int indentDepth = 0;
+
+
+void dedent(){
+  indentDepth = (indentDepth > 0) ? indentDepth = indentDepth - indentDepth : indentDepth;
+}
+
+
+std::string indent() {
+  indentDepth = indentDepth + 2;
+  std::string out = "";
+  for (int i= 0; i < indentDepth; i++) {
+    out.append(" ");
+  }
+}
+
+
+
+
+
 /// ASTnode - Base class for all AST nodes.
 class ASTnode {
 public:
@@ -413,13 +433,194 @@ class IntASTnode : public ASTnode {
 public:
   IntASTnode(TOKEN tok, int val) : Val(val), Tok(tok) {}
   virtual Value *codegen() override;
-  // virtual std::string to_string() const override {
-  // return a sting representation of this AST node
-  //};
+  virtual std::string to_string() const override {
+    std::string out = "IntegerLiteral: " + std::to_string(Val);
+    dedent();
+    return out;
+  };
 };
 
 /* add other AST nodes as nessasary */
 
+class FloatASTnode : public ASTnode {
+  float Val;
+  TOKEN Tok;
+  std::string Name;
+
+public:
+  FloatASTnode(TOKEN tok, float val) : Val(val), Tok(tok) {}
+  virtual Value *codegen() override;
+  virtual std::string to_string() const override {
+    std::string out = "FloatLiteral: " + std::to_string(Val);
+    dedent();
+    return out;
+  };
+
+};
+
+class BoolASTnode : public ASTnode {
+  bool Val;
+  TOKEN Tok;
+  std::string Name;
+
+public:
+  BoolASTnode(TOKEN tok, bool val) : Val(val), Tok(tok) {}
+  virtual Value *codegen() override;
+  virtual std::string to_string() const override {
+    std::string out = "BoolLiteral: " + std::to_string(Val);
+    dedent();
+    return out;
+  };
+
+};
+
+
+class VariableASTnode : public ASTnode {
+  std::string Val;
+  TOKEN Tok;
+  std::string Type;
+
+public:
+  VariableASTnode(TOKEN tok, std::string type, std::string val) : Val(val), Tok(tok), Type(type) {}
+  virtual Value *codegen() override;
+  virtual std::string to_string() const override {
+    std::string out = "VarDeclaration: " + Type + " " + Val;
+    dedent();
+    return out;
+  };
+
+};
+
+
+class VariableRefASTnode : public ASTnode{
+  TOKEN Tok;
+  std::string Name;
+
+  public:
+  VariableRefASTnode(TOKEN tok, std::string name) : Name(name), Tok(tok) {}
+  virtual Value *codegen() override;
+  // virtual TOKEN getTok() const override{
+  //   return Tok;
+  // }
+  // std::string getName() const override{ return Name; }
+  virtual std::string to_string() const override {
+  //return a string representation of this AST node
+    std::string out = "VarReference: " + Name;
+    dedent();
+    return out;
+  };
+};
+
+
+class UnaryExprASTnode : public ASTnode {
+  std::string Opcode;
+  TOKEN Tok;
+  std::unique_ptr<ASTnode> Operand;
+
+public:
+  UnaryExprASTnode(TOKEN tok, std::string opcode, std::unique_ptr<ASTnode> operand) : Opcode(opcode), Tok(tok), Operand(std::move(operand)) {}
+  virtual Value *codegen() override;
+  virtual std::string to_string() const override {
+  //return a string representation of this AST node
+    std::string out = "UnaryExpr: " + Opcode + "\n" + indent() + Operand->to_string();
+    dedent();
+    return out;
+  };
+
+};
+
+class BinaryExprASTnode : public ASTnode {
+  std::string Opcode;
+  TOKEN Tok;
+  std::unique_ptr<ASTnode> LHS, RHS;
+
+public:
+  BinaryExprASTnode(TOKEN tok, std::string opcode, std::unique_ptr<ASTnode> LHS, std::unique_ptr<ASTnode> RHS) : Opcode(opcode), Tok(tok), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
+  virtual Value *codegen() override;
+  virtual std::string to_string() const override {
+  //return a string representation of this AST node
+    std::string out = "BinaryExpr: " + Opcode + "\n" + indent() + LHS->to_string() + "\n" + indent() + RHS->to_string();
+    dedent();
+    return out;
+  };
+
+};
+
+class CallExprAST : public ASTnode {
+  std::string Callee;
+  TOKEN Tok;
+  std::vector<std::unique_ptr<ASTnode>> Args;
+
+public:
+  CallExprAST(TOKEN tok, const std::string &callee,
+              std::vector<std::unique_ptr<ASTnode>> args)
+    : Tok(tok), Callee(callee), Args(std::move(args)) {}
+    virtual Value *codegen() override;
+    virtual std::string to_string() const override {
+  //return a string representation of this AST node
+    std::string arguments_string = "";
+    for (int i = 0; i < Args.size(); i++){
+      arguments_string.append("\n" + indent() + "Param: " + Args[i]->to_string());
+    }
+    std::string out = "FuncCall: " + Callee + arguments_string;
+    dedent();
+    return out;
+  };
+};
+
+class IfExprAST : public ASTnode {
+  std::unique_ptr<ASTnode> Cond;
+  std::vector<std::unique_ptr<ASTnode>> Then, Else;
+
+public:
+  IfExprAST(std::unique_ptr<ASTnode> Cond, std::vector<std::unique_ptr<ASTnode>> Then,
+            std::vector<std::unique_ptr<ASTnode>> Else)
+      : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
+      virtual Value *codegen() override;
+};
+
+class WhileExprAST : public ASTnode {
+  std::unique_ptr<ASTnode> Cond;
+  std::vector<std::unique_ptr<ASTnode>> Then;
+
+public:
+  WhileExprAST(std::unique_ptr<ASTnode> Cond, std::vector<std::unique_ptr<ASTnode>> Then)
+      : Cond(std::move(Cond)), Then(std::move(Then)) {}
+      virtual Value *codegen() override;
+};
+
+
+class ReturnExprAST : public ASTnode {
+  std::unique_ptr<ASTnode> ReturnExpr;
+  std::string Type;
+  TOKEN Tok;
+
+public:
+  ReturnExprAST(TOKEN tok, std::unique_ptr<ASTnode> returnexpr, std::string type) : Tok(tok), ReturnExpr(std::move(returnexpr)), Type(type) {}
+  virtual Value *codegen() override;
+};
+
+class PrototypeAST {
+  std::string Name;
+  std::vector<std::string> Args;
+
+public:
+  PrototypeAST(const std::string &name, std::vector<std::string> args)
+    : Name(name), Args(std::move(args)) {}
+
+  const std::string &getName() const { return Name; }
+  virtual Value *codegen() override;
+};
+
+class FunctionAST {
+  std::unique_ptr<PrototypeAST> Proto;
+  std::unique_ptr<ASTnode> Body;
+
+public:
+  FunctionAST(std::unique_ptr<PrototypeAST> proto,
+              std::unique_ptr<ASTnode> body)
+    : Proto(std::move(Proto)), Body(std::move(body)) {}
+};
 
 //===----------------------------------------------------------------------===//
 // First Sets
@@ -612,7 +813,7 @@ bool pas_extern(){
   }
   if (!match(LPAR)){
     if(!errorReported)
-        {errs()<<"Syntax error: Expected '(' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        {errs()<<"Syntax error: Expected '('3 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
     return false;
   }
@@ -672,7 +873,7 @@ bool decl() {
   getNextToken();
   TOKEN look2 = CurTok;
   getNextToken();
-  if (isIn(CurTok.type, first_var_decl) && look2.type == SC){
+  if (isIn(look1.type, first_var_decl) && CurTok.type == SC){
     putBackToken(CurTok);
     putBackToken(look2);
     CurTok = look1;
@@ -777,7 +978,7 @@ bool fun_decl() {
   }
   if (!match(LPAR)){
     if(!errorReported)
-        {errs()<<"Syntax error: Expected '(' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        {errs()<<"Syntax error: Expected '('2 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
     return false;
   }
@@ -1036,7 +1237,7 @@ bool while_stmt(){
   }
   if (!match(LPAR)){
     if(!errorReported)
-        {errs()<<"Syntax error: Expected '(' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        {errs()<<"Syntax error: Expected '('1 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
     return false;
   }
@@ -1071,7 +1272,7 @@ bool if_stmt(){
   }
   if (!match(LPAR)){
     if(!errorReported)
-        {errs()<<"Syntax error: Expected '(' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+        {errs()<<"Syntax error: Expected '('5 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
     return false;
   }
@@ -1324,14 +1525,14 @@ bool rval6I(){
     }
   }
 }
-// rval7 ::= "-" rval8 | "!" rval8 | rval8
+// rval7 ::= "-" rval7 | "!" rval7 | rval8
 bool rval7(){
   if (match(MINUS)){
-    return rval8();
+    return rval7();
   }
   else{
     if (match(NOT)){
-      return rval8();
+      return rval7();
     }
     else{
       return rval8();
@@ -1397,7 +1598,7 @@ bool rval8(){
             }
             else {
               if(!errorReported)
-                {errs()<<"Syntax error: Expected '(' or Identifier or INT_LIT or BOOL_LIT or FLOAT_LIT at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
+                {errs()<<"Syntax error: Expected '('4 or Identifier or INT_LIT or BOOL_LIT or FLOAT_LIT at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
               errorReported = true;
               return false;
             }
