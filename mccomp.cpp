@@ -410,6 +410,7 @@ std::string indent() {
   for (int i= 0; i < indentDepth; i++) {
     out.append(" ");
   }
+  return out;
 }
 
 
@@ -449,11 +450,10 @@ public:
 
 class IntASTnode : public ASTnode {
   int Val;
-  TOKEN Tok;
-  std::string Name;
+
 
 public:
-  IntASTnode(TOKEN tok, int val) : Val(val), Tok(tok) {}
+  IntASTnode(int val) : Val(val){}
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "IntegerLiteral: " + std::to_string(Val);
@@ -466,11 +466,10 @@ public:
 
 class FloatASTnode : public ASTnode {
   float Val;
-  TOKEN Tok;
-  std::string Name;
+
 
 public:
-  FloatASTnode(TOKEN tok, float val) : Val(val), Tok(tok) {}
+  FloatASTnode(float val) : Val(val) {}
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "FloatLiteral: " + std::to_string(Val);
@@ -482,11 +481,10 @@ public:
 
 class BoolASTnode : public ASTnode {
   bool Val;
-  TOKEN Tok;
   std::string Name;
 
 public:
-  BoolASTnode(TOKEN tok, bool val) : Val(val), Tok(tok) {}
+  BoolASTnode(bool val) : Val(val) {}
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "BoolLiteral: " + std::to_string(Val);
@@ -499,11 +497,10 @@ public:
 
 class VariableASTnode : public ASTnode {
   std::string Val;
-  TOKEN Tok;
   std::string Type;
 
 public:
-  VariableASTnode(TOKEN tok, std::string type, std::string val) : Val(val), Tok(tok), Type(type) {}
+  VariableASTnode(std::string type, std::string val) : Val(val), Type(type) {}
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "VarDeclaration: " + Type + " " + Val;
@@ -515,11 +512,10 @@ public:
 
 
 class VariableRefASTnode : public ASTnode{
-  TOKEN Tok;
   std::string Name;
 
   public:
-  VariableRefASTnode(TOKEN tok, std::string name) : Name(name), Tok(tok) {}
+  VariableRefASTnode(std::string name) : Name(name) {}
   virtual Value *codegen() override;
   // virtual TOKEN getTok() const override{
   //   return Tok;
@@ -536,11 +532,10 @@ class VariableRefASTnode : public ASTnode{
 
 class UnaryExprASTnode : public ASTnode {
   std::string Opcode;
-  TOKEN Tok;
   std::unique_ptr<ASTnode> Operand;
 
 public:
-  UnaryExprASTnode(TOKEN tok, std::string opcode, std::unique_ptr<ASTnode> operand) : Opcode(opcode), Tok(tok), Operand(std::move(operand)) {}
+  UnaryExprASTnode(std::string opcode, std::unique_ptr<ASTnode> operand) : Opcode(opcode), Operand(std::move(operand)) {}
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
   //return a string representation of this AST node
@@ -553,11 +548,10 @@ public:
 
 class BinaryExprASTnode : public ASTnode {
   std::string Opcode;
-  TOKEN Tok;
   std::unique_ptr<ASTnode> LHS, RHS;
 
 public:
-  BinaryExprASTnode(TOKEN tok, std::string opcode, std::unique_ptr<ASTnode> LHS, std::unique_ptr<ASTnode> RHS) : Opcode(opcode), Tok(tok), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
+  BinaryExprASTnode(std::string opcode, std::unique_ptr<ASTnode> LHS, std::unique_ptr<ASTnode> RHS) : Opcode(opcode), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
   //return a string representation of this AST node
@@ -570,13 +564,12 @@ public:
 
 class CallExprAST : public ASTnode {
   std::string Callee;
-  TOKEN Tok;
   std::vector<std::unique_ptr<ASTnode>> Args;
 
 public:
-  CallExprAST(TOKEN tok, const std::string &callee,
+  CallExprAST(const std::string &callee,
               std::vector<std::unique_ptr<ASTnode>> args)
-    : Tok(tok), Callee(callee), Args(std::move(args)) {}
+    : Callee(callee), Args(std::move(args)) {}
     virtual Value *codegen() override;
     virtual std::string to_string() const override {
   //return a string representation of this AST node
@@ -650,10 +643,9 @@ public:
 class ReturnExprAST : public ASTnode {
   std::unique_ptr<ASTnode> ReturnExpr;
   std::string Type;
-  TOKEN Tok;
 
 public:
-  ReturnExprAST(TOKEN tok, std::unique_ptr<ASTnode> returnexpr, std::string type) : Tok(tok), ReturnExpr(std::move(returnexpr)), Type(type) {}
+  ReturnExprAST(std::unique_ptr<ASTnode> returnexpr, std::string type) : ReturnExpr(std::move(returnexpr)), Type(type) {}
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
   //return a string representation of this AST node
@@ -670,21 +662,21 @@ public:
 
 class PrototypeAST : public ASTnode{
   std::string Name;
-  std::vector<std::string> Args;
+  std::vector<std::unique_ptr<VariableASTnode>> Args;
 
 public:
-  PrototypeAST(const std::string &name, std::vector<std::string> args)
+  PrototypeAST(const std::string &name, std::vector<std::unique_ptr<VariableASTnode>> args)
     : Name(name), Args(std::move(args)) {}
 
   const std::string &getName() const { return Name; }
-  const std::vector<std::string> &getParamNames() const {return Args;}
+  // const std::vector<std::string> &getParamNames() const {return Args;}
     virtual std::string to_string() const override {
   //return a string representation of this AST node
   std::string args = "";
 
   for(int i = 0; i < Args.size(); i++)
   {
-      args.append("\n" + indent() + "Param: " + Args[i]);
+      args.append("\n" + indent() + "Param: " + Args[i]->to_string());
   } 
   return "FunctionDecl: " + Name + args;
   };
@@ -699,6 +691,7 @@ public:
   FunctionAST(std::unique_ptr<PrototypeAST> proto,
               std::unique_ptr<ASTnode> body)
     : Proto(std::move(proto)), Body(std::move(body)) {}
+    virtual Value *codegen() override;
     virtual std::string to_string() const override {
   std::string out = "Function: " + Proto->to_string() + "\n" + indent() + "Body:\n" + indent() + Body->to_string();
   dedent();
@@ -711,12 +704,14 @@ public:
 class BlockASTnode : public ASTnode {
     // std::vector<std::unique_ptr<ASTnode>> localDecls;
     // std::vector<std::unique_ptr<ASTnode>> stmtList;
+    std::vector<std::unique_ptr<ASTnode>> localDecls;
+    std::vector<std::unique_ptr<ASTnode>> stmtList;
 public:
-  std::vector<std::unique_ptr<ASTnode>> localDecls;
-  std::vector<std::unique_ptr<ASTnode>> stmtList;
+  
 
   BlockASTnode(std::vector<std::unique_ptr<ASTnode>> localDecls, std::vector<std::unique_ptr<ASTnode>> stmtList)
       : localDecls(std::move(localDecls)), stmtList(std::move(stmtList)) {}
+  virtual Value *codegen() override;
 
   // Override virtual methods from ASTnode as needed
   virtual std::string to_string() const override {
@@ -836,9 +831,9 @@ std::unique_ptr<ASTnode> var_decl();
 std::string var_type();
 std::string type_spec();
 std::unique_ptr<ASTnode> fun_decl();
-std::unique_ptr<PrototypeAST> params();
+std::vector<std::unique_ptr<VariableASTnode>> params();
 std::vector<std::unique_ptr<VariableASTnode>> param_list();
-bool param_listI();
+std::vector<std::unique_ptr<VariableASTnode>> param_listI();
 std::unique_ptr<VariableASTnode> param();
 std::unique_ptr<ASTnode> block();
 std::vector<std::unique_ptr<ASTnode>>  local_decls();
@@ -852,17 +847,17 @@ std::unique_ptr<ASTnode> else_stmt();
 std::unique_ptr<ASTnode> return_stmt();
 std::unique_ptr<ASTnode> expr();
 std::unique_ptr<ASTnode> rval();
-std::unique_ptr<ASTnode> rvalI();
+std::unique_ptr<ASTnode> rvalI(std::unique_ptr<ASTnode>);
 std::unique_ptr<ASTnode> rval2();
-std::unique_ptr<ASTnode> rval2I();
+std::unique_ptr<ASTnode> rval2I(std::unique_ptr<ASTnode>);
 std::unique_ptr<ASTnode> rval3();
-std::unique_ptr<ASTnode> rval3I();
+std::unique_ptr<ASTnode> rval3I(std::unique_ptr<ASTnode>);
 std::unique_ptr<ASTnode> rval4();
-std::unique_ptr<ASTnode> rval4I();
+std::unique_ptr<ASTnode> rval4I(std::unique_ptr<ASTnode>);
 std::unique_ptr<ASTnode> rval5();
-std::unique_ptr<ASTnode> rval5I();
+std::unique_ptr<ASTnode> rval5I(std::unique_ptr<ASTnode>);
 std::unique_ptr<ASTnode> rval6();
-std::unique_ptr<ASTnode> rval6I();
+std::unique_ptr<ASTnode> rval6I(std::unique_ptr<ASTnode>);
 std::unique_ptr<ASTnode> rval7();
 std::unique_ptr<ASTnode> rval8();
 std::vector<std::unique_ptr<ASTnode>> args();
@@ -1023,7 +1018,7 @@ std::unique_ptr<ASTnode> pas_extern() {
   }
 
   auto paramsNode = params();
-  if (!paramsNode) return nullptr;
+  // if (!paramsNode) return nullptr;
 
   if (!match(RPAR)) {
     if (!errorReported) {
@@ -1041,7 +1036,7 @@ std::unique_ptr<ASTnode> pas_extern() {
     return nullptr;
   }
 
-  return std::make_unique<FunctionAST>(std::make_unique<PrototypeAST>(identifier, paramsNode->getParamNames()), nullptr);
+  return std::make_unique<PrototypeAST>(identifier, std::move(paramsNode));
 }
 
 
@@ -1222,7 +1217,7 @@ std::unique_ptr<ASTnode> var_decl() {
     return nullptr;
   }
 
-  return std::make_unique<VariableASTnode>(CurTok, typeNode, identifier);
+  return std::make_unique<VariableASTnode>(typeNode, identifier);
 }
 
 //COULD CHANGE 
@@ -1342,7 +1337,6 @@ std::unique_ptr<ASTnode> fun_decl() {
 
   // Parse parameters and collect them in a vector
   auto paramsNode = params();
-  if (!paramsNode) return nullptr;
 
   // Parse the closing parenthesis
   if (!match(RPAR)) {
@@ -1358,7 +1352,7 @@ std::unique_ptr<ASTnode> fun_decl() {
 
   // Construct and return the FunctionAST node
   return std::make_unique<FunctionAST>(
-    std::make_unique<PrototypeAST>(functionName, paramsNode->getParamNames()), 
+    std::make_unique<PrototypeAST>(functionName, std::move(paramsNode)), 
     std::move(bodyNode)
   );
 }
@@ -1387,25 +1381,29 @@ std::unique_ptr<ASTnode> fun_decl() {
 //     }
 //   }
 // }
-std::unique_ptr<PrototypeAST> params() {
+std::vector<std::unique_ptr<VariableASTnode>> params() {
   std::vector<std::unique_ptr<VariableASTnode>> paramList;
 
   if (isIn(CurTok.type, first_param_list)) {
     paramList = param_list();
-    if (paramList.empty()) return nullptr; // Check if param_list failed
+    // if (paramList.empty()) return nullptr; // Check if param_list failed
+    return paramList;
   } else if (match(VOID_TOK)) {
+    auto param_void = std::make_unique<VariableASTnode>("void", "void");
+    paramList.push_back(std::move(param_void));
+    return paramList;
     // "void" as a special case: function takes no parameters
   } else if (isIn(CurTok.type, Follow_params)) {
-    // epsilon case: no parameters
+    return std::vector<std::unique_ptr<VariableASTnode>>();
   } else {
     if (!errorReported) {
       errs() << "Syntax error: Invalid params statement at line " << CurTok.lineNo << " column " << CurTok.columnNo << ".\n";
     }
     errorReported = true;
-    return nullptr;
+    return std::vector<std::unique_ptr<VariableASTnode>>();
   }
 
-  return std::make_unique<PrototypeAST>("", std::move(paramList));
+
 }
 
 
@@ -1427,11 +1425,15 @@ std::vector<std::unique_ptr<VariableASTnode>> param_list() {
 
   // Parse the first parameter
   auto firstParam = param();
-  if (!firstParam) return {}; // Return an empty vector if parsing fails
+  if (!firstParam) {
+    // Error handling if parsing fails
+    return {};
+  }
   paramList.push_back(std::move(firstParam));
 
   // Parse the rest of the parameters
-  if (!param_listI(paramList)) return {}; // Return an empty vector if parsing fails
+  auto additionalParams = param_listI();
+  paramList.insert(paramList.end(), std::make_move_iterator(additionalParams.begin()), std::make_move_iterator(additionalParams.end()));
 
   return paramList;
 }
@@ -1454,26 +1456,35 @@ std::vector<std::unique_ptr<VariableASTnode>> param_list() {
 //     }
 //   }
 // }
-bool param_listI(std::vector<std::unique_ptr<VariableASTnode>>& paramList) {
+std::vector<std::unique_ptr<VariableASTnode>> param_listI() {
+  std::vector<std::unique_ptr<VariableASTnode>> paramList;
+
   if (CurTok.type == COMMA) { // Assuming COMMA is the token for ','
     getNextToken(); // Consume the comma
 
     // Parse the next parameter
     auto nextParam = param();
-    if (!nextParam) return false;
+    if (!nextParam) {
+      // Error handling if parsing fails
+      return {};
+    }
     paramList.push_back(std::move(nextParam));
 
-    // Recursively parse more parameters
-    return param_listI(paramList);
+    // Recursively parse more parameters and add them to paramList
+    auto moreParams = param_listI();
+    paramList.insert(paramList.end(), std::make_move_iterator(moreParams.begin()), std::make_move_iterator(moreParams.end()));
   } else if (isIn(CurTok.type, Follow_param_listI)) {
-    return true; // epsilon case: no more parameters
+    // Epsilon case: no more parameters, return the accumulated list
+    return paramList;
   } else {
     if (!errorReported) {
       errs() << "Syntax error: Invalid structure of parameters found at line " << CurTok.lineNo << " column " << CurTok.columnNo << ".\n";
     }
     errorReported = true;
-    return false;
+    return {};
   }
+
+  return paramList;
 }
 
 // param ::= var_type IDENT
@@ -2089,7 +2100,7 @@ std::unique_ptr<ASTnode> expr() {
       return nullptr;
     }
     // Return a new BinaryExprASTnode for assignment
-    return std::make_unique<BinaryExprASTnode>(look1, "=", std::make_unique<VariableRefASTnode>(look1, varName), std::move(rhs));
+    return std::make_unique<BinaryExprASTnode>("=", std::make_unique<VariableRefASTnode>(varName), std::move(rhs));
   }
 
   // If we fall back to rval
@@ -2146,7 +2157,7 @@ std::unique_ptr<ASTnode> rvalI(std::unique_ptr<ASTnode> left) {
     auto right = rval2();
     if (!right) return nullptr;
     
-    return rvalI(std::make_unique<BinaryExprASTnode>(opTok, "||", std::move(left), std::move(right)));
+    return rvalI(std::make_unique<BinaryExprASTnode>("||", std::move(left), std::move(right)));
   } else if (isIn(CurTok.type, Follow_rvalI)) {
     return left; // Return the constructed left node
   } else {
@@ -2198,7 +2209,7 @@ std::unique_ptr<ASTnode> rval2I(std::unique_ptr<ASTnode> left) {
     auto right = rval3();
     if (!right) return nullptr;
     
-    return rval2I(std::make_unique<BinaryExprASTnode>(opTok, "&&", std::move(left), std::move(right)));
+    return rval2I(std::make_unique<BinaryExprASTnode>("&&", std::move(left), std::move(right)));
   } else if (isIn(CurTok.type, Follow_rval2I)) {
     return left; // Return the constructed left node
   } else {
@@ -2249,7 +2260,7 @@ std::unique_ptr<ASTnode> rval3I(std::unique_ptr<ASTnode> left) {
     if (!right) return nullptr; // If rval4 fails, return nullptr
     
     // Create a BinaryExprAST node with the operator and the left and right operands
-    return rval3I(std::make_unique<BinaryExprASTnode>(opTok, op, std::move(left), std::move(right)));
+    return rval3I(std::make_unique<BinaryExprASTnode>(op, std::move(left), std::move(right)));
   } else if (isIn(CurTok.type, Follow_rval3I)) {
     return left; // Return the left node if we've reached the end of the `rval3I` sequence
   } else {
@@ -2313,7 +2324,7 @@ std::unique_ptr<ASTnode> rval4I(std::unique_ptr<ASTnode> left) {
     if (!right) return nullptr; // If rval5 fails, return nullptr
     
     // Construct the BinaryExprAST node for the operator and the operands
-    return rval4I(std::make_unique<BinaryExprASTnode>(opTok, op, std::move(left), std::move(right)));
+    return rval4I(std::make_unique<BinaryExprASTnode>(op, std::move(left), std::move(right)));
   } else if (isIn(CurTok.type, Follow_rval4I)) {
     return left; // Return the left node if we are at the end of the sequence
   } else {
@@ -2374,7 +2385,7 @@ std::unique_ptr<ASTnode> rval5I(std::unique_ptr<ASTnode> left) {
     if (!right) return nullptr; // If rval6 fails, return nullptr
     
     // Construct the BinaryExprAST node for the operator and the operands
-    return rval5I(std::make_unique<BinaryExprASTnode>(opTok, op, std::move(left), std::move(right)));
+    return rval5I(std::make_unique<BinaryExprASTnode>(op, std::move(left), std::move(right)));
   } else if (isIn(CurTok.type, Follow_rval5I)) {
     return left; // Return the left node if no more operators are present
   } else {
@@ -2435,7 +2446,7 @@ std::unique_ptr<ASTnode> rval6I(std::unique_ptr<ASTnode> left) {
     if (!right) return nullptr; // If rval7 fails, return nullptr
     
     // Construct the BinaryExprAST node for the operator and the operands
-    return rval6I(std::make_unique<BinaryExprASTnode>(opTok, op, std::move(left), std::move(right)));
+    return rval6I(std::make_unique<BinaryExprASTnode>(op, std::move(left), std::move(right)));
   } else if (isIn(CurTok.type, Follow_rval6I)) {
     return left; // Return the left node if no more operators are present
   } else {
@@ -2467,13 +2478,13 @@ std::unique_ptr<ASTnode> rval7() {
     auto operand = rval7();
     if (!operand) return nullptr;
     
-    return std::make_unique<UnaryExprASTnode>(opTok, "-", std::move(operand));
+    return std::make_unique<UnaryExprASTnode>("-", std::move(operand));
   } else if (match(NOT)) {
     TOKEN opTok = CurTok;
     auto operand = rval7();
     if (!operand) return nullptr;
     
-    return std::make_unique<UnaryExprASTnode>(opTok, "!", std::move(operand));
+    return std::make_unique<UnaryExprASTnode>("!", std::move(operand));
   } else {
     return rval8();
   }
@@ -2579,19 +2590,19 @@ std::unique_ptr<ASTnode> rval8() {
         errorReported = true;
         return nullptr;
       }
-      return std::make_unique<CallExprAST>(look1, funcName, std::move(arguments));
+      return std::make_unique<CallExprAST>(funcName, std::move(arguments));
     } else {
       putBackToken(CurTok);
       CurTok = look1;
-      
+      auto val = CurTok.lexeme;
       if (match(IDENT)) {
-        return std::make_unique<VariableRefASTnode>(look1, look1.lexeme);
+        return std::make_unique<VariableRefASTnode>(val);
       } else if (match(INT_LIT)) {
-        return std::make_unique<IntASTnode>(look1, std::stoi(look1.lexeme));
+        return std::make_unique<IntASTnode>(val);
       } else if (match(FLOAT_LIT)) {
-        return std::make_unique<FloatASTnode>(look1, std::stof(look1.lexeme));
+        return std::make_unique<FloatASTnode>(val);
       } else if (match(BOOL_LIT)) {
-        return std::make_unique<BoolASTnode>(look1, look1.lexeme == "true");
+        return std::make_unique<BoolASTnode>(val);
       } else {
         if (!errorReported) {
           errs() << "Syntax error: Expected '(' or Identifier or INT_LIT or BOOL_LIT or FLOAT_LIT at line " << CurTok.lineNo << " column " << CurTok.columnNo << ".\n";
@@ -2759,8 +2770,14 @@ std::unique_ptr<rootASTnode> program() {
     auto externs = extern_list();
     auto decls = decl_list();
     std::vector<std::unique_ptr<ASTnode>> topNodes;
-    if (externs) topNodes.push_back(std::move(externs));
-    if (decls) topNodes.push_back(std::move(decls));
+    // Move each element from externs and decls into topNodes
+    topNodes.insert(topNodes.end(),
+                    std::make_move_iterator(externs.begin()),
+                    std::make_move_iterator(externs.end()));
+
+    topNodes.insert(topNodes.end(),
+                    std::make_move_iterator(decls.begin()),
+                    std::make_move_iterator(decls.end()));
     return std::make_unique<rootASTnode>(std::move(topNodes));
   } else {
     return std::make_unique<rootASTnode>(decl_list());
@@ -2774,7 +2791,8 @@ static void parser() {
             CurTok.type);
   auto root = program();
   if (root && CurTok.type == EOF_TOK){
-    llvm::outs() << root << "\n";
+    // llvm::outs() << root << "\n";
+    std::cout<<root->to_string()<<std::endl;
     std::cout<<"Parsing successful."<<std::endl;
     // return true;
 
