@@ -415,8 +415,30 @@ void dedent() {
 //   }
 //   return out;
 // }
-std::string indent() {
+// std::string indent() {
+//   indentDepth += 4;
+//   return std::string(indentDepth, ' ');
+// }
+std::string indent()
+{
   indentDepth += 4;
+  std::string out = "";
+    for(int i = 0; i < indentDepth; i++)
+      if(i % 2 == 0)
+        out.append("|");
+      else
+      {
+        if(i == indentDepth - 1)
+          out.append("-");
+        else
+          out.append(" ");
+      }
+  // else
+    // out = std::string(indentLevel,' ');
+  return out;
+}
+
+std::string startIndent(){
   return std::string(indentDepth, ' ');
 }
 
@@ -602,7 +624,7 @@ public:
       // virtual Value *codegen() override = 0;
       virtual std::string to_string() const override {
   std::string out = "IfExpr:\n" + indent() + "Condition: " + Cond->to_string();
-  out.append("\n" + indent() + "Then:" +indent() + Then->to_string() + "\nElse:" + Else->to_string());
+  out.append("\n" + indent() + "Then:" + Then->to_string() + "\n"+indent()+"Else:" + Else->to_string());
   // indent();
   // for (const auto &stmt : Then) {
   //   out += indent() + stmt->to_string() + "\n";
@@ -635,7 +657,7 @@ public:
        virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string ThenStr = "";
-    std::string out = "WhileExpr:\n" + indent() + "--> " + Cond->to_string() + "\n" + indent() + "--> " + Then->to_string();
+    std::string out = "WhileExpr:\n" + indent() + Cond->to_string() + "\n" + indent() + Then->to_string();
     // for(int i = 0; i < Then.size(); i++)
     // {
     //   if(Then[i] != nullptr)  
@@ -660,7 +682,7 @@ public:
     std::string returnExpr = "";
     std::string out = "";
     if(ReturnExpr != nullptr){
-      out = "ReturnStmt\n" + indent() + "--> " + ReturnExpr->to_string();
+      out = "ReturnStmt\n" + indent() + ReturnExpr->to_string();
     }else{
        out = "ReturnStmt: Null";}
     dedent();
@@ -671,10 +693,11 @@ public:
 class PrototypeAST : public ASTnode{
   std::string Name;
   std::vector<std::unique_ptr<VariableASTnode>> Args;
+  std::string Type;
 
 public:
-  PrototypeAST(const std::string name, std::vector<std::unique_ptr<VariableASTnode>> args)
-    : Name(name), Args(std::move(args)) {}
+  PrototypeAST(const std::string name, std::vector<std::unique_ptr<VariableASTnode>> args, const std::string type)
+    : Name(name), Type(type), Args(std::move(args)) {}
 
   const std::string getName() const { return Name; }
   // const std::vector<std::string> &getParamNames() const {return Args;}
@@ -686,9 +709,10 @@ public:
   {
       args.append("\n" + indent() + "Param: " + std::move(Args)[i]->to_string());
   } 
-  return "FunctionDecl: " + Name + args;
   dedent();
-  dedent();
+  return "FunctionDecl: " +Type + " "+ Name + args;
+  // dedent();
+  // dedent();
   };
   // virtual Value *codegen() override = 0;
 };
@@ -704,7 +728,7 @@ public:
     // virtual Value *codegen() override = 0;
     virtual std::string to_string() const override {
   dedent();
-  std::string out = "Function: " + Proto->to_string() + "\n" + indent() + "Body:\n" + indent() + Body->to_string();
+  std::string out = "Function:\n" +indent()+ Proto->to_string() + "\n" + indent() + "Body:" + Body->to_string();
   dedent();
   return out;
 };
@@ -727,7 +751,7 @@ public:
   // Override virtual methods from ASTnode as needed
   virtual std::string to_string() const override {
     // Example implementation for debugging
-    std::string out = "BlockASTnode: ";
+    std::string out = "";
     for (const auto& decl : localDecls) {
       out.append("\n" + indent() + decl->to_string());
     }
@@ -1047,7 +1071,7 @@ std::unique_ptr<ASTnode> pas_extern() {
     return nullptr;
   }
 
-  return std::make_unique<PrototypeAST>(identifier, std::move(paramsNode));
+  return std::make_unique<PrototypeAST>(identifier, std::move(paramsNode),typeNode);
 }
 
 
@@ -1363,7 +1387,7 @@ std::unique_ptr<ASTnode> fun_decl() {
 
   // Construct and return the FunctionAST node
   return std::make_unique<FunctionAST>(
-    std::make_unique<PrototypeAST>(functionName, std::move(paramsNode)), 
+    std::make_unique<PrototypeAST>(functionName, std::move(paramsNode),returnTypeNode), 
     std::move(bodyNode)
   );
 }
