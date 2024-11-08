@@ -451,7 +451,7 @@ std::string startIndent(){
 class ASTnode {
 public:
   virtual ~ASTnode() {}
-  // virtual Value *codegen() = 0;
+  virtual Value *codegen() = 0;
   virtual std::string to_string() const {return "";};
 };
 // Recursive Descent Parser - Function call for each production
@@ -463,7 +463,7 @@ class rootASTnode : public ASTnode {
 
 public:
   rootASTnode(std::vector<std::unique_ptr<ASTnode>> topnodes) : TopNodes(std::move(topnodes)) {}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "Program: ";
     for (int i = 0; i < TopNodes.size(); i++) {
@@ -484,7 +484,7 @@ class IntASTnode : public ASTnode {
 
 public:
   IntASTnode(int val) : Val(val){}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "IntegerLiteral: " + std::to_string(Val);
     dedent();
@@ -500,7 +500,7 @@ class FloatASTnode : public ASTnode {
 
 public:
   FloatASTnode(float val) : Val(val) {}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "FloatLiteral: " + std::to_string(Val);
     dedent();
@@ -515,7 +515,7 @@ class BoolASTnode : public ASTnode {
 
 public:
   BoolASTnode(bool val) : Val(val) {}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "BoolLiteral: " + std::to_string(Val);
     dedent();
@@ -531,7 +531,7 @@ class VariableASTnode : public ASTnode {
 
 public:
   VariableASTnode(std::string type, std::string val) : Val(val), Type(type) {}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "VarDeclaration: " + Type + " " + Val;
     dedent();
@@ -546,7 +546,7 @@ class VariableRefASTnode : public ASTnode{
 
   public:
   VariableRefASTnode(std::string name) : Name(name) {}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
   // virtual TOKEN getTok() const override{
   //   return Tok;
   // }
@@ -566,7 +566,7 @@ class UnaryExprASTnode : public ASTnode {
 
 public:
   UnaryExprASTnode(std::string opcode, std::unique_ptr<ASTnode> operand) : Opcode(opcode), Operand(std::move(operand)) {}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string out = "UnaryExpr: " + Opcode + "\n" + indent() + Operand->to_string();
@@ -582,7 +582,7 @@ class BinaryExprASTnode : public ASTnode {
 
 public:
   BinaryExprASTnode(std::string opcode, std::unique_ptr<ASTnode> LHS, std::unique_ptr<ASTnode> RHS) : Opcode(opcode), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string out = "BinaryExpr: " + Opcode + "\n" + indent() + LHS->to_string() + "\n" + indent() + RHS->to_string();
@@ -600,7 +600,7 @@ public:
   CallExprAST(const std::string &callee,
               std::vector<std::unique_ptr<ASTnode>> args)
     : Callee(callee), Args(std::move(args)) {}
-    // virtual Value *codegen() override = 0;
+    virtual Value *codegen() override;
     virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string arguments_string = "";
@@ -621,7 +621,7 @@ public:
   IfExprAST(std::unique_ptr<ASTnode> Cond, std::unique_ptr<ASTnode> Then,
             std::unique_ptr<ASTnode> Else)
       : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
-      // virtual Value *codegen() override = 0;
+      virtual Value *codegen() override;
       virtual std::string to_string() const override {
   std::string out = "IfExpr:\n" + indent() + "Condition: " + Cond->to_string();
   out.append("\n" + indent() + "Then:" + Then->to_string() + "\n"+indent()+"Else:" + Else->to_string());
@@ -653,7 +653,7 @@ class WhileExprAST : public ASTnode {
 public:
   WhileExprAST(std::unique_ptr<ASTnode> Cond, std::unique_ptr<ASTnode> Then)
       : Cond(std::move(Cond)), Then(std::move(Then)) {}
-      // virtual Value *codegen() override = 0;
+      virtual Value *codegen() override;
        virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string ThenStr = "";
@@ -676,7 +676,7 @@ class ReturnExprAST : public ASTnode {
 
 public:
   ReturnExprAST(std::unique_ptr<ASTnode> returnexpr) : ReturnExpr(std::move(returnexpr)) {}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string returnExpr = "";
@@ -714,7 +714,7 @@ public:
   // dedent();
   // dedent();
   };
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override ;
 };
 
 class FunctionAST : public ASTnode {
@@ -725,7 +725,7 @@ public:
   FunctionAST(std::unique_ptr<PrototypeAST> proto,
               std::unique_ptr<ASTnode> body)
     : Proto(std::move(proto)), Body(std::move(body)) {}
-    // virtual Value *codegen() override = 0;
+    virtual Value *codegen() override;
     virtual std::string to_string() const override {
   std::string out = "Function:\n" + indent() + Proto->to_string() + "\n" + indent() + "Body:" + Body->to_string();
   dedent();
@@ -745,7 +745,7 @@ public:
 
   BlockASTnode(std::vector<std::unique_ptr<ASTnode>> localDecls, std::vector<std::unique_ptr<ASTnode>> stmtList)
       : localDecls(std::move(localDecls)), stmtList(std::move(stmtList)) {}
-  // virtual Value *codegen() override = 0;
+  virtual Value *codegen() override;
 
   // Override virtual methods from ASTnode as needed
   virtual std::string to_string() const override {
@@ -2051,6 +2051,8 @@ static void parser() {
 static LLVMContext TheContext;
 static IRBuilder<> Builder(TheContext);
 static std::unique_ptr<Module> TheModule;
+static std::vector<std::map<std::string,AllocaInst*>> NamedValuesList;
+static std::map<std::string,GlobalVariable*> GlobalVariables;
 
 
 
