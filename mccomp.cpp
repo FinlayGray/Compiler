@@ -902,9 +902,6 @@ std::vector<std::unique_ptr<ASTnode>> arg_listI();
 
 
 // extern externlistI
-// bool extern_list() {
-//   return pas_extern() && extern_listI();
-// }
 std::vector<std::unique_ptr<ASTnode>> extern_list() {
   std::vector<std::unique_ptr<ASTnode>> externNodes;
 
@@ -925,23 +922,6 @@ std::vector<std::unique_ptr<ASTnode>> extern_list() {
 
 
 // extern extern_listI | epsilon
-// bool extern_listI(){
-//   if (isIn(CurTok.type, first_extern)){
-//     return pas_extern() && extern_listI();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_extern_listI)){
-//       return true;
-//     }
-//     else {
-//       if (!errorReported)
-//           {errs()<<"Syntax error: Invalid token6 "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
-
 std::vector<std::unique_ptr<ASTnode>> extern_listI() {
   std::vector<std::unique_ptr<ASTnode>> externNodes;
 
@@ -968,60 +948,6 @@ std::vector<std::unique_ptr<ASTnode>> extern_listI() {
 }
 
 // "extern" type_spec IDENT "(" params ")" ";"
-// bool pas_extern(){
-//   fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
-//              CurTok.type);
-//   if (!match(EXTERN)){ //upadted this d
-//     // getNextToken();
-    
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected  `extern`  at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-
-
-//   if (isIn(CurTok.type, first_type_spec)){
-//     type_spec();
-    
-//   } else {
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Invalid type spec token, found" <<CurTok.lexeme<<" at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//   }
-//   if (!match(IDENT)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected an Identifier at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(LPAR)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected '('3 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!params()){
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Invalid params token" <<CurTok.lexeme<<" at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(RPAR)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(SC)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   return true;
-// }
 std::unique_ptr<ASTnode> pas_extern() {
   if (!match(EXTERN)) {
     if (!errorReported) {
@@ -1075,14 +1001,6 @@ std::unique_ptr<ASTnode> pas_extern() {
 
 
 // decl_list ::= decl decl_listI
-// bool decl_list() {
-//   if (isIn(CurTok.type, first_decl)){
-//     return decl() && decl_listI();
-//   }
-//   else {
-//     return false;
-//   }
-// }
 std::vector<std::unique_ptr<ASTnode>> decl_list() {
   std::vector<std::unique_ptr<ASTnode>> declarations;
 
@@ -1105,22 +1023,6 @@ std::vector<std::unique_ptr<ASTnode>> decl_list() {
 
 
 // decl_listI ::= decl decl_listI | epsilon
-// bool decl_listI() {
-//   if (isIn(CurTok.type, first_decl)){
-//     return decl() && decl_listI();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_decl_listI)){
-//       return true;
-//     }
-//     else {
-//       if (!errorReported)
-//           {errs()<<"Syntax error: Invalid decl_listI token "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::vector<std::unique_ptr<ASTnode>> decl_listI() {
   std::vector<std::unique_ptr<ASTnode>> declarations;
 
@@ -1149,33 +1051,6 @@ std::vector<std::unique_ptr<ASTnode>> decl_listI() {
 
 
 //decl ::= var_decl |  fun_decl
-// bool decl() {
-//   TOKEN look1 = CurTok;
-//   getNextToken();
-//   TOKEN look2 = CurTok;
-//   getNextToken();
-//   if (isIn(look1.type, first_var_decl) && CurTok.type == SC){
-//     putBackToken(CurTok);
-//     putBackToken(look2);
-//     CurTok = look1;
-//     return var_decl();
-//   }
-//   else {
-//     putBackToken(CurTok);
-//     putBackToken(look2);
-//     CurTok = look1;
-      
-//     if (isIn(CurTok.type, first_fun_decl)){
-//       return fun_decl();
-//     }
-//     else {
-//       if (!errorReported)
-//           {errs()<<"Syntax error: Invalid decl token "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::unique_ptr<ASTnode> decl() {
   TOKEN look1 = CurTok;
   getNextToken();
@@ -1206,30 +1081,6 @@ std::unique_ptr<ASTnode> decl() {
 
 
 //var_decl ::= var_type IDENT ";" 
-// bool var_decl() {
-//   if (isIn(CurTok.type, first_var_type)){
-//     var_type();
-//   }else {
-//     if (!errorReported)
-//           {errs()<<"Syntax error: Expected var_type token at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(IDENT)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected an Identifier at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-
-//   if (!match(SC)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   return true;
-// }
 std::unique_ptr<ASTnode> var_decl() {
   auto typeNode = var_type();
   if (typeNode=="") return nullptr;
@@ -1298,50 +1149,6 @@ std::string var_type() {
 }
 
 //fun_decl ::= type_spec IDENT "(" params ")" block
-// bool fun_decl() {
-//   if (isIn(CurTok.type, first_type_spec)){
-//     type_spec();
-//   }else {
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected an Identifier at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(IDENT)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected an Identifier at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(LPAR)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected '('2 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!params()){
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Invalid params token" <<CurTok.lexeme<<" at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(RPAR)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (isIn(CurTok.type, first_block)){
-//     block();
-//   }else {
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected block statement starting with '{' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   return true;
-
-// }
 std::unique_ptr<ASTnode> fun_decl() {
   // Parse the type specification
   if (!isIn(CurTok.type, first_type_spec)) {
@@ -1394,27 +1201,6 @@ std::unique_ptr<ASTnode> fun_decl() {
 
 
 //params ::= param_list | "void" | epsilon
-// bool params() {
-//   if (isIn(CurTok.type, first_param_list)){
-//     return param_list();
-//   }
-//   else {
-//     if (match(VOID_TOK)){
-//       return true;
-//     }
-//     else{
-//       if (isIn(CurTok.type, Follow_params)){
-//         return true;
-//       }
-//       else{
-//         if(!errorReported)
-//           {errs()<<"Syntax error: Invalid params statement at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//         errorReported = true;
-//         return false;
-//       }
-//     }
-//   }
-// }
 std::vector<std::unique_ptr<VariableASTnode>> params() {
   std::vector<std::unique_ptr<VariableASTnode>> paramList;
 
@@ -1443,17 +1229,6 @@ std::vector<std::unique_ptr<VariableASTnode>> params() {
 
 
 // param_list ::= param param_listI
-// bool param_list() {
-//   if (isIn(CurTok.type, first_param)){
-//     return param() && param_listI();
-//   }
-//   else {
-//     if (!errorReported)
-//           {errs()<<"Syntax error: Invalid token5 "<<CurTok.lexeme<<" found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-// }
 std::vector<std::unique_ptr<VariableASTnode>> param_list() {
   std::vector<std::unique_ptr<VariableASTnode>> paramList;
 
@@ -1473,23 +1248,6 @@ std::vector<std::unique_ptr<VariableASTnode>> param_list() {
 }
 
 // param_listI ::= "," param param_listI | epsilon
-// bool param_listI(){
-//   if (isIn(CurTok.type, first_param_listI)){
-//     getNextToken(); // consumes ','
-//     return param() && param_listI();
-//   }
-//   else{
-//     if (isIn(CurTok.type, Follow_param_listI)){
-//       return true;
-//     }
-//     else {
-//       if (!errorReported)
-//           {errs()<<"Syntax error: Invalid structure of parameters found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::vector<std::unique_ptr<VariableASTnode>> param_listI() {
   std::vector<std::unique_ptr<VariableASTnode>> paramList;
 
@@ -1522,24 +1280,6 @@ std::vector<std::unique_ptr<VariableASTnode>> param_listI() {
 }
 
 // param ::= var_type IDENT
-// bool param() {
-//   if (isIn(CurTok.type, first_param)){
-//     var_type();
-//     if (!match(IDENT)){
-//       if (!errorReported)
-//           {errs()<<"Syntax error: Invalid Identifier found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     return true;
-//   }
-//   else {
-//       if (!errorReported)
-//         {errs()<<"Syntax error: Invalid declaration of parameter found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//   }
-// }
 std::unique_ptr<VariableASTnode> param() {
   if (isIn(CurTok.type, first_param)) {
     auto typeNode = var_type();
@@ -1567,33 +1307,7 @@ std::unique_ptr<VariableASTnode> param() {
 
 
 // block ::= "{" local_decls stmt_list "}"
-// bool block() {
-//   if (!match(LBRA)){
-//     if (!errorReported)
-//         {errs()<<"Syntax error: Expected '{' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!local_decls()){
-//     if (!errorReported)
-//         {errs()<<"Syntax error: Invalid token4 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!stmt_list()){
-//     if (!errorReported)
-//         {errs()<<"Syntax error: Invalid token3 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(RBRA)){
-//     if (!errorReported)
-//         {errs()<<"Syntax error: Expected '}' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   return true;
-// }
+
 std::unique_ptr<ASTnode> block() {
   if (!match(LBRA)) {
     if (!errorReported)
@@ -1621,22 +1335,6 @@ std::unique_ptr<ASTnode> block() {
 
 
 //local_decls ::= local_decl local_decls | epsilon
-// bool local_decls(){
-//   if (isIn(CurTok.type, first_local_decl)){
-//     return local_decl() && local_decls();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_local_decls)){
-//       return true;
-//     }
-//     else {
-//       if (!errorReported)
-//         {errs()<<"Syntax error: Invalid local declaration at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::vector<std::unique_ptr<ASTnode>> local_decls() {
   std::vector<std::unique_ptr<ASTnode>> decls;
   while (isIn(CurTok.type, first_local_decl)) {
@@ -1661,31 +1359,6 @@ std::vector<std::unique_ptr<ASTnode>> local_decls() {
 
 
 // local_decl ::= var_type IDENT ";"
-// bool local_decl(){
-//   if (isIn(CurTok.type, first_local_decl)){
-//     var_type();
-//     if (!match(IDENT)){
-//       if (!errorReported)
-//           {errs()<<"Syntax error: Invalid Identifier found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     if (!match(SC)){
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-
-//     return true;
-//   }
-//   else {
-//       if (!errorReported)
-//         {errs()<<"Syntax error: Invalid local declaration found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//   }
-// }
 std::unique_ptr<ASTnode> local_decl() {
   if (isIn(CurTok.type, first_local_decl)) {
     auto typeNode = var_type(); // var_type needs to return an AST node
@@ -1724,22 +1397,6 @@ std::unique_ptr<ASTnode> local_decl() {
 
 
 // stmt_list ::= stmt stmt_list |  epsilon
-// bool stmt_list() {
-//   if (isIn(CurTok.type, first_stmt_list)){
-//     return stmt() && stmt_list();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_stmt_list)){
-//       return true;
-//     }
-//     else {
-//       if (!errorReported)
-//         {errs()<<"Syntax error: Invalid statement list structure found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::vector<std::unique_ptr<ASTnode>> stmt_list() {
   std::vector<std::unique_ptr<ASTnode>> stmts;
   while (isIn(CurTok.type, first_stmt_list)) {
@@ -1761,37 +1418,6 @@ std::vector<std::unique_ptr<ASTnode>> stmt_list() {
 
 
 //stmt ::= expr_stmt |  block |  if_stmt |  while_stmt |  return_stmt
-// bool stmt(){
-//   if (isIn(CurTok.type, first_expr_stmt)){
-//     return expr_stmt();
-//   }
-//   else {
-//     if (isIn(CurTok.type, first_block)){
-//       return block();
-//     }
-//     else {
-//       if (isIn(CurTok.type, first_if_stmt)){
-//         return if_stmt();
-//       }
-//       else {
-//         if (isIn(CurTok.type, first_while_stmt)){
-//           return while_stmt();
-//         }
-//         else {
-//           if (isIn(CurTok.type, first_return_stmt)){
-//             return return_stmt();
-//           }
-//           else {
-//             if (!errorReported)
-//               {errs()<<"Syntax error: Invalid statement structure found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//             errorReported = true;
-//             return false;
-//           }
-//         }
-//       }
-//     }
-//   }
-// }
 std::unique_ptr<ASTnode> stmt() {
   if (isIn(CurTok.type, first_expr_stmt)) {
     return expr_stmt();
@@ -1814,27 +1440,6 @@ std::unique_ptr<ASTnode> stmt() {
 
 
 // expr_stmt ::= expr ";" |  ";"
-// bool expr_stmt(){
-//   if (isIn(CurTok.type, first_expr)){
-//     expr();
-//     if (!match(SC)){
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     return true;
-//   }
-//   else {
-//     if (!match(SC)){
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     return true;
-//   }
-// }
 std::unique_ptr<ASTnode> expr_stmt() {
   if (isIn(CurTok.type, first_expr)) {
     auto exprNode = expr(); // expr() needs to return an AST node
@@ -1860,39 +1465,6 @@ std::unique_ptr<ASTnode> expr_stmt() {
 }
 
 // while_stmt ::= "while" "(" expr ")" stmt 
-// bool while_stmt(){
-//   if (!match(WHILE)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected 'while' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(LPAR)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected '('1 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!expr()){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(RPAR)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!stmt()){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Invalid statement at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   return true;
-// }
 std::unique_ptr<ASTnode> while_stmt() {
   if (!match(WHILE)) {
     if (!errorReported)
@@ -1926,45 +1498,7 @@ std::unique_ptr<ASTnode> while_stmt() {
 
 
 //if_stmt ::= "if" "(" expr ")" block else_stmt
-// bool if_stmt(){
-//   if (!match(IF)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected 'if' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(LPAR)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected '('5 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!expr()){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!match(RPAR)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!block()){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Invalid block statment at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (!else_stmt()){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Invalid else statement at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   return true;
-// }
+
 std::unique_ptr<ASTnode> if_stmt() {
   if (!match(IF)) {
     if (!errorReported)
@@ -1999,29 +1533,6 @@ std::unique_ptr<ASTnode> if_stmt() {
 }
 
 // else_stmt  ::= "else" block |  epsilon
-// bool else_stmt(){
-//   if (isIn(CurTok.type, first_else_stmt)){
-//     getNextToken();
-//     if (!block()){
-//       if(!errorReported)
-//           {errs()<<"Syntax error: Invalid block statment at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     return true;
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_else_stmt)){
-//       return true;
-//     }
-//     else {
-//       if(!errorReported)
-//           {errs()<<"Syntax error: Invalid else statment at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::unique_ptr<ASTnode> else_stmt() {
   if (isIn(CurTok.type, first_else_stmt)) {
     getNextToken();
@@ -2040,33 +1551,6 @@ std::unique_ptr<ASTnode> else_stmt() {
 
 
 // return_stmt ::= "return" ";" |  "return" expr ";"
-// bool return_stmt(){
-//   if (!match(RETURN)){
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Expected 'return' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-//   if (CurTok.type == SC){
-//     getNextToken();
-//     return true;
-//   }
-//   else {
-//     if (!expr()){
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     if (!match(SC)){
-//       if(!errorReported)
-//           {errs()<<"Syntax error: Expected ';' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     return true;
-//   }
-// }
 std::unique_ptr<ASTnode> return_stmt() {
   if (!match(RETURN)) {
     if (!errorReported)
@@ -2095,35 +1579,6 @@ std::unique_ptr<ASTnode> return_stmt() {
 
 
 // expr ::= IDENT "=" expr | rval 
-// bool expr() {
-//   TOKEN look1 = CurTok;
-//   getNextToken();
-//   if (look1.type == IDENT && CurTok.type == ASSIGN){
-//     getNextToken();
-//     if (!expr()) {
-//       if(!errorReported)
-//           {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     // putBackToken(CurTok); //abcdefg
-//     return true;
-//   }
-//   putBackToken(CurTok);
-//   CurTok = look1;
-  
-//   fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
-//             CurTok.type);
-//   if (isIn(CurTok.type, first_rval7_to_rval)){
-//     return rval();
-//   } else{
-//     if(!errorReported)
-//         {errs()<<"Syntax error: Invalid expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//     errorReported = true;
-//     return false;
-//   }
-
-// }
 std::unique_ptr<ASTnode> expr() {
   TOKEN look1 = CurTok;
   getNextToken();
@@ -2162,9 +1617,6 @@ std::unique_ptr<ASTnode> expr() {
 
 
 // rval ::= rval2 rvalI
-// bool rval() {
-//   return rval2() && rvalI();
-// }
 std::unique_ptr<ASTnode> rval() {
   auto left = rval2();
   if (!left) return nullptr;
@@ -2174,23 +1626,6 @@ std::unique_ptr<ASTnode> rval() {
 
 
 // ravlI ::= "||" rval2 rvalI | epsilon
-// bool rvalI() {
-//   if (isIn(CurTok.type, first_rvalI)){
-//     getNextToken();
-//     return rval2() && rvalI();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_rvalI)){
-//       return true;
-//     }
-//     else {
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected '||' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::unique_ptr<ASTnode> rvalI(std::unique_ptr<ASTnode> left) {
   if (isIn(CurTok.type, first_rvalI)) {
     TOKEN opTok = CurTok;
@@ -2212,30 +1647,11 @@ std::unique_ptr<ASTnode> rvalI(std::unique_ptr<ASTnode> left) {
 }
 
 
+
+
+
+
 // rval2 ::= rval3 rval2I
-// bool rval2() {
-//   return rval3() && rval2I();
-// }
-
-
-// bool rval2I(){
-//   if (isIn(CurTok.type, first_rval2I)){
-//     getNextToken();
-//     return rval3() && rval2I();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_rval2I)){
-//       return true;
-//     }
-//     else {
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected '&&' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
-
 std::unique_ptr<ASTnode> rval2() {
   auto left = rval3();
   if (!left) return nullptr;
@@ -2265,9 +1681,6 @@ std::unique_ptr<ASTnode> rval2I(std::unique_ptr<ASTnode> left) {
 
 
 // rval3 ::= rval4 rval3I
-// bool rval3() {
-//   return rval4() && rval3I();
-// }
 std::unique_ptr<ASTnode> rval3() {
   auto left = rval4();
   if (!left) return nullptr;
@@ -2275,23 +1688,6 @@ std::unique_ptr<ASTnode> rval3() {
 }
 
 // rval3I ::= "==" rval4 rval3I | "!=" rval4 rval3I | epsilon
-// bool rval3I() {
-//   if (isIn(CurTok.type, first_rval3I)){
-//     getNextToken();
-//     return rval4() && rval3I();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_rval3I)){
-//       return true;
-//     }
-//     else {
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected '==' or '!=' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::unique_ptr<ASTnode> rval3I(std::unique_ptr<ASTnode> left) {
   if (isIn(CurTok.type, first_rval3I)) {
     TOKEN opTok = CurTok; // Save the current token, which will be "==" or "!="
@@ -2316,9 +1712,6 @@ std::unique_ptr<ASTnode> rval3I(std::unique_ptr<ASTnode> left) {
 
 
 // rval4 ::= rval5 rval4I
-// bool rval4(){
-//   return rval5() && rval4I();
-// }
 
 std::unique_ptr<ASTnode> rval4() {
   auto left = rval5();
@@ -2326,23 +1719,6 @@ std::unique_ptr<ASTnode> rval4() {
   return rval4I(std::move(left));
 }
 // rval4I ::= "<=" rval5 rval4I | "<" rval5 rval4I | ">=" rval5 rval4I | ">" rval5 rval4I | epsilon
-// bool rval4I() {
-//   if (isIn(CurTok.type, first_rval4I)){
-//     getNextToken();
-//     return rval5() && rval4I();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_rval4I)){
-//       return true;
-//     }
-//     else {
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected '<=' or '<' or '>=' or '>' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::unique_ptr<ASTnode> rval4I(std::unique_ptr<ASTnode> left) {
   if (isIn(CurTok.type, first_rval4I)) {
     TOKEN opTok = CurTok; // Save the current token, which will be one of the operators
@@ -2380,9 +1756,6 @@ std::unique_ptr<ASTnode> rval4I(std::unique_ptr<ASTnode> left) {
 
 
 // rval5 ::= rval6 rval5I
-// bool rval5(){
-//   return rval6() && rval5I();
-// }
 std::unique_ptr<ASTnode> rval5() {
   auto left = rval6();
   if (!left) return nullptr;
@@ -2390,24 +1763,6 @@ std::unique_ptr<ASTnode> rval5() {
 }
 
 // rval5I ::= "+" rval6 rval5I | "-" rval6 rval5I | epsilon
-// bool rval5I(){
-//   if (isIn(CurTok.type, first_rval5I)){
-//     getNextToken();
-//     return rval6() && rval5I();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_rval5I)){
-//       return true;
-//     }
-//     else {
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected '+' or '-' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
-
 std::unique_ptr<ASTnode> rval5I(std::unique_ptr<ASTnode> left) {
   if (isIn(CurTok.type, first_rval5I)) {
     TOKEN opTok = CurTok; // Save the current token, which will be either '+' or '-'
@@ -2440,9 +1795,6 @@ std::unique_ptr<ASTnode> rval5I(std::unique_ptr<ASTnode> left) {
 }
 
 // rval6 ::= rval7 rval6I
-// bool rval6() {
-//   return rval7() && rval6I();
-// }
 std::unique_ptr<ASTnode> rval6() {
   auto left = rval7();
   if (!left) return nullptr;
@@ -2450,23 +1802,6 @@ std::unique_ptr<ASTnode> rval6() {
 }
 
 //rval6I ::= "*" rval7 rval6I | "/" rval7 rval6I | "%" rval7 rval6I | epsilon
-// bool rval6I(){
-//   if (isIn(CurTok.type, first_rval6I)){
-//     getNextToken();
-//     return rval7() && rval6I();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_rval6I)){
-//       return true;
-//     }
-//     else {
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected '*' or '/' or '%' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::unique_ptr<ASTnode> rval6I(std::unique_ptr<ASTnode> left) {
   if (isIn(CurTok.type, first_rval6I)) {
     TOKEN opTok = CurTok; // Save the current token, which will be '*', '/', or '%'
@@ -2501,19 +1836,6 @@ std::unique_ptr<ASTnode> rval6I(std::unique_ptr<ASTnode> left) {
 }
 
 // rval7 ::= "-" rval7 | "!" rval7 | rval8
-// bool rval7(){
-//   if (match(MINUS)){
-//     return rval7();
-//   }
-//   else{
-//     if (match(NOT)){
-//       return rval7();
-//     }
-//     else{
-//       return rval8();
-//     }
-//   }
-// }
 std::unique_ptr<ASTnode> rval7() {
   if (match(MINUS)) {
     TOKEN opTok = CurTok;
@@ -2534,73 +1856,6 @@ std::unique_ptr<ASTnode> rval7() {
 
 
 // rval8 ::= "(" expr ")" | IDENT | IDENT "(" args ")" | INT_LIT | FLOAT_LIT | BOOL_LIT 
-// bool rval8(){
-//   if (match(LPAR)){
-//     if (!expr()){
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Incorrect expression at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     if (!match(RPAR)){
-//       if(!errorReported)
-//         {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     return true;
-//   }
-//   else{
-//     TOKEN look1 = CurTok;
-//     getNextToken();
-//     if (look1.type == IDENT && CurTok.type == LPAR){
-//       //do stuff
-//       getNextToken(); //guess
-//       if (!args()){
-//         if(!errorReported)
-//           {errs()<<"Syntax error: Incorrect args at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//         errorReported = true;
-        
-//         return false;
-//       }
-//       if (!match(RPAR)){
-//         if(!errorReported)
-//           {errs()<<"Syntax error: Expected ')' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//         errorReported = true;
-//         return false;
-//       }
-//       return true;
-//     }
-//     else{
-//       putBackToken(CurTok);
-//       CurTok = look1;
-//       if (match(IDENT)){
-//         return true;
-//       }
-//       else {
-//         if (match(INT_LIT)){
-//           return true;
-//         }
-//         else {
-//           if (match(FLOAT_LIT)){
-//             return true;
-//           }
-//           else {
-//             if (match(BOOL_LIT)){
-//               return true;
-//             }
-//             else {
-//               if(!errorReported)
-//                 {errs()<<"Syntax error: Expected '('4 or Identifier or INT_LIT or BOOL_LIT or FLOAT_LIT at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//               errorReported = true;
-//               return false;
-//             }
-//           }
-//         }
-//       }
-//     }
-//   }
-// }
 std::unique_ptr<ASTnode> rval8() {
   if (match(LPAR)) {
     auto innerExpr = expr();
@@ -2664,29 +1919,6 @@ std::unique_ptr<ASTnode> rval8() {
 
 
 // args ::= arg_list |  epsilon
-// bool args() {
-//     if (isIn(CurTok.type, first_arg_list)){
-//       if (!arg_list()){
-//         if(!errorReported)
-//             {errs()<<"Syntax error: Invalid argument list at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//         errorReported = true;
-//         return false;
-//       }
-//       return true;
-//     }
-//     else{
-//       if (isIn(CurTok.type, Follow_args)){
-//         return true;
-//       }
-//       else{
-          
-//         if(!errorReported)
-//             {errs()<<"Syntax error: Invalid arguments at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//         errorReported = true;
-//         return false;
-//       }
-//     }
-// }
 std::vector<std::unique_ptr<ASTnode>> args() {
   std::vector<std::unique_ptr<ASTnode>> arguments;
   
@@ -2707,10 +1939,6 @@ std::vector<std::unique_ptr<ASTnode>> args() {
 
 
 //arg_list ::= expr arg_listI
-// bool arg_list(){
-
-//   return expr() && arg_listI();
-// }
 std::vector<std::unique_ptr<ASTnode>> arg_list() {
   std::vector<std::unique_ptr<ASTnode>> arguments;
 
@@ -2734,31 +1962,6 @@ std::vector<std::unique_ptr<ASTnode>> arg_list() {
 
 
 //arg_listI ::= "," expr arg_listI | epsilon
-// bool arg_listI(){
-//   fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
-//             CurTok.type);
-//   if (isIn(CurTok.type, first_arg_listI)){
-//     if (!match(COMMA)){
-//       if(!errorReported)
-//             {errs()<<"Syntax error: Expected ',' at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//     return expr() && arg_listI();
-//   }
-//   else{
-//     if (isIn(CurTok.type, Follow_arg_listI)){
-//       return true;
-//     }
-//     else{
-//       if(!errorReported)
-//             {errs()<<"Syntax error: Invalid token2 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
-
 std::vector<std::unique_ptr<ASTnode>> arg_listI() {
   std::vector<std::unique_ptr<ASTnode>> arguments;
 
@@ -2800,19 +2003,6 @@ std::vector<std::unique_ptr<ASTnode>> arg_listI() {
 
 
 // program ::= extern_list decl_list | decl_list
-// rootASTnode program(){
-//   if (isIn(CurTok.type, first_extern_list)){
-    
-    
-//     return extern_list() && decl_list();
-//   }
-//   else {
-//     return std::make_unique<rootASTnode>(decl_list());
-//   }
-
-  
-// }
-
 std::unique_ptr<rootASTnode> program() {
   if (isIn(CurTok.type, first_extern_list)) {
     auto externs = extern_list();
@@ -2861,6 +2051,8 @@ static void parser() {
 static LLVMContext TheContext;
 static IRBuilder<> Builder(TheContext);
 static std::unique_ptr<Module> TheModule;
+
+
 
 //===----------------------------------------------------------------------===//
 // AST Printer
