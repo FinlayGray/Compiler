@@ -657,7 +657,7 @@ public:
        virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string ThenStr = "";
-    std::string out = "WhileExpr:\n" + indent() + Cond->to_string() + "\n" + indent() + Then->to_string();
+    std::string out = "WhileExpr:\n" + indent() + Cond->to_string() + "\n" + indent() + "Then: " + Then->to_string();
     // for(int i = 0; i < Then.size(); i++)
     // {
     //   if(Then[i] != nullptr)  
@@ -727,8 +727,7 @@ public:
     : Proto(std::move(proto)), Body(std::move(body)) {}
     // virtual Value *codegen() override = 0;
     virtual std::string to_string() const override {
-  dedent();
-  std::string out = "Function:\n" +indent()+ Proto->to_string() + "\n" + indent() + "Body:" + Body->to_string();
+  std::string out = "Function:\n" + indent() + Proto->to_string() + "\n" + indent() + "Body:" + Body->to_string();
   dedent();
   return out;
 };
