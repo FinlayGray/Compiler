@@ -39,6 +39,10 @@ using namespace llvm::sys;
 FILE *pFile;
 static bool errorReported = false;
 
+
+// to do:
+// add a ast to handle empty comma
+
 //===----------------------------------------------------------------------===//
 // Lexer
 //===----------------------------------------------------------------------===//
@@ -1724,22 +1728,6 @@ std::unique_ptr<ASTnode> local_decl() {
 
 
 // stmt_list ::= stmt stmt_list |  epsilon
-// bool stmt_list() {
-//   if (isIn(CurTok.type, first_stmt_list)){
-//     return stmt() && stmt_list();
-//   }
-//   else {
-//     if (isIn(CurTok.type, Follow_stmt_list)){
-//       return true;
-//     }
-//     else {
-//       if (!errorReported)
-//         {errs()<<"Syntax error: Invalid statement list structure found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//       errorReported = true;
-//       return false;
-//     }
-//   }
-// }
 std::vector<std::unique_ptr<ASTnode>> stmt_list() {
   std::vector<std::unique_ptr<ASTnode>> stmts;
   while (isIn(CurTok.type, first_stmt_list)) {
@@ -1761,37 +1749,7 @@ std::vector<std::unique_ptr<ASTnode>> stmt_list() {
 
 
 //stmt ::= expr_stmt |  block |  if_stmt |  while_stmt |  return_stmt
-// bool stmt(){
-//   if (isIn(CurTok.type, first_expr_stmt)){
-//     return expr_stmt();
-//   }
-//   else {
-//     if (isIn(CurTok.type, first_block)){
-//       return block();
-//     }
-//     else {
-//       if (isIn(CurTok.type, first_if_stmt)){
-//         return if_stmt();
-//       }
-//       else {
-//         if (isIn(CurTok.type, first_while_stmt)){
-//           return while_stmt();
-//         }
-//         else {
-//           if (isIn(CurTok.type, first_return_stmt)){
-//             return return_stmt();
-//           }
-//           else {
-//             if (!errorReported)
-//               {errs()<<"Syntax error: Invalid statement structure found at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
-//             errorReported = true;
-//             return false;
-//           }
-//         }
-//       }
-//     }
-//   }
-// }
+
 std::unique_ptr<ASTnode> stmt() {
   if (isIn(CurTok.type, first_expr_stmt)) {
     return expr_stmt();
@@ -1855,7 +1813,7 @@ std::unique_ptr<ASTnode> expr_stmt() {
       errorReported = true;
       return nullptr;
     }
-    return nullptr;
+    return std::make_unique<ASTnode>();
   }
 }
 
