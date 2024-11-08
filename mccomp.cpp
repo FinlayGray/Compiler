@@ -399,19 +399,27 @@ static void clearTokBuffer() {  //clear the buffer at the end
 static int indentDepth = 0;
 
 
-void dedent(){
-  indentDepth = (indentDepth > 0) ? indentDepth = indentDepth - indentDepth : indentDepth;
+// void dedent(){
+//   indentDepth = (indentDepth > 0) ? indentDepth = indentDepth - indentDepth : indentDepth;
+// }
+void dedent() {
+  if (indentDepth >= 4) indentDepth -= 4;
 }
 
 
+// std::string indent() {
+//   indentDepth = indentDepth + 2;
+//   std::string out = "";
+//   for (int i= 0; i < indentDepth; i++) {
+//     out.append(" ");
+//   }
+//   return out;
+// }
 std::string indent() {
-  indentDepth = indentDepth + 2;
-  std::string out = "";
-  for (int i= 0; i < indentDepth; i++) {
-    out.append(" ");
-  }
-  return out;
+  indentDepth += 4;
+  return std::string(indentDepth, ' ');
 }
+
 
 
 
@@ -421,7 +429,7 @@ std::string indent() {
 class ASTnode {
 public:
   virtual ~ASTnode() {}
-  virtual Value *codegen() = 0;
+  // virtual Value *codegen() = 0;
   virtual std::string to_string() const {return "";};
 };
 // Recursive Descent Parser - Function call for each production
@@ -433,7 +441,7 @@ class rootASTnode : public ASTnode {
 
 public:
   rootASTnode(std::vector<std::unique_ptr<ASTnode>> topnodes) : TopNodes(std::move(topnodes)) {}
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
   virtual std::string to_string() const override {
     std::string out = "Program: ";
     for (int i = 0; i < TopNodes.size(); i++) {
@@ -454,7 +462,7 @@ class IntASTnode : public ASTnode {
 
 public:
   IntASTnode(int val) : Val(val){}
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
   virtual std::string to_string() const override {
     std::string out = "IntegerLiteral: " + std::to_string(Val);
     dedent();
@@ -470,7 +478,7 @@ class FloatASTnode : public ASTnode {
 
 public:
   FloatASTnode(float val) : Val(val) {}
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
   virtual std::string to_string() const override {
     std::string out = "FloatLiteral: " + std::to_string(Val);
     dedent();
@@ -485,7 +493,7 @@ class BoolASTnode : public ASTnode {
 
 public:
   BoolASTnode(bool val) : Val(val) {}
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
   virtual std::string to_string() const override {
     std::string out = "BoolLiteral: " + std::to_string(Val);
     dedent();
@@ -501,7 +509,7 @@ class VariableASTnode : public ASTnode {
 
 public:
   VariableASTnode(std::string type, std::string val) : Val(val), Type(type) {}
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
   virtual std::string to_string() const override {
     std::string out = "VarDeclaration: " + Type + " " + Val;
     dedent();
@@ -516,7 +524,7 @@ class VariableRefASTnode : public ASTnode{
 
   public:
   VariableRefASTnode(std::string name) : Name(name) {}
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
   // virtual TOKEN getTok() const override{
   //   return Tok;
   // }
@@ -536,7 +544,7 @@ class UnaryExprASTnode : public ASTnode {
 
 public:
   UnaryExprASTnode(std::string opcode, std::unique_ptr<ASTnode> operand) : Opcode(opcode), Operand(std::move(operand)) {}
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
   virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string out = "UnaryExpr: " + Opcode + "\n" + indent() + Operand->to_string();
@@ -552,7 +560,7 @@ class BinaryExprASTnode : public ASTnode {
 
 public:
   BinaryExprASTnode(std::string opcode, std::unique_ptr<ASTnode> LHS, std::unique_ptr<ASTnode> RHS) : Opcode(opcode), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
   virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string out = "BinaryExpr: " + Opcode + "\n" + indent() + LHS->to_string() + "\n" + indent() + RHS->to_string();
@@ -570,7 +578,7 @@ public:
   CallExprAST(const std::string &callee,
               std::vector<std::unique_ptr<ASTnode>> args)
     : Callee(callee), Args(std::move(args)) {}
-    virtual Value *codegen() override;
+    // virtual Value *codegen() override = 0;
     virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string arguments_string = "";
@@ -585,30 +593,30 @@ public:
 
 class IfExprAST : public ASTnode {
   std::unique_ptr<ASTnode> Cond;
-  std::vector<std::unique_ptr<ASTnode>> Then, Else;
+  std::unique_ptr<ASTnode> Then, Else;
 
 public:
-  IfExprAST(std::unique_ptr<ASTnode> Cond, std::vector<std::unique_ptr<ASTnode>> Then,
-            std::vector<std::unique_ptr<ASTnode>> Else)
+  IfExprAST(std::unique_ptr<ASTnode> Cond, std::unique_ptr<ASTnode> Then,
+            std::unique_ptr<ASTnode> Else)
       : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
-      virtual Value *codegen() override;
+      // virtual Value *codegen() override = 0;
       virtual std::string to_string() const override {
   std::string out = "IfExpr:\n" + indent() + "Condition: " + Cond->to_string();
-  out += "\n" + indent() + "Then:\n";
-  indent();
-  for (const auto &stmt : Then) {
-    out += indent() + stmt->to_string() + "\n";
-  }
-  dedent();
+  out.append("\n" + indent() + "Then:" +indent() + Then->to_string() + "\nElse:" + Else->to_string());
+  // indent();
+  // for (const auto &stmt : Then) {
+  //   out += indent() + stmt->to_string() + "\n";
+  // }
+  // dedent();
 
-  if (!Else.empty()) {
-    out += indent() + "Else:\n";
-    indent();
-    for (const auto &stmt : Else) {
-      out += indent() + stmt->to_string() + "\n";
-    }
-    dedent();
-  }
+  // if (!Else.empty()) {
+  //   out += indent() + "Else:\n";
+  //   indent();
+  //   for (const auto &stmt : Else) {
+  //     out += indent() + stmt->to_string() + "\n";
+  //   }
+    // dedent();
+  // }
   
   dedent();
   return out;
@@ -618,22 +626,22 @@ public:
 
 class WhileExprAST : public ASTnode {
   std::unique_ptr<ASTnode> Cond;
-  std::vector<std::unique_ptr<ASTnode>> Then;
+  std::unique_ptr<ASTnode> Then;
 
 public:
-  WhileExprAST(std::unique_ptr<ASTnode> Cond, std::vector<std::unique_ptr<ASTnode>> Then)
+  WhileExprAST(std::unique_ptr<ASTnode> Cond, std::unique_ptr<ASTnode> Then)
       : Cond(std::move(Cond)), Then(std::move(Then)) {}
-      virtual Value *codegen() override;
+      // virtual Value *codegen() override = 0;
        virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string ThenStr = "";
-    std::string out = "WhileExpr:\n" + indent() + "--> " + Cond->to_string();
-    for(int i = 0; i < Then.size(); i++)
-    {
-      if(Then[i] != nullptr)  
-        ThenStr.append("\n" + indent() + "--> " + Then[i]->to_string());
-    }
-    out.append(ThenStr);
+    std::string out = "WhileExpr:\n" + indent() + "--> " + Cond->to_string() + "\n" + indent() + "--> " + Then->to_string();
+    // for(int i = 0; i < Then.size(); i++)
+    // {
+    //   if(Then[i] != nullptr)  
+    //     ThenStr.append("\n" + indent() + "--> " + Then[i]->to_string());
+    // }
+    // out.append(ThenStr);
     dedent();
     return out;
   };
@@ -642,19 +650,19 @@ public:
 
 class ReturnExprAST : public ASTnode {
   std::unique_ptr<ASTnode> ReturnExpr;
-  std::string Type;
+  // std::string Type;
 
 public:
-  ReturnExprAST(std::unique_ptr<ASTnode> returnexpr, std::string type) : ReturnExpr(std::move(returnexpr)), Type(type) {}
-  virtual Value *codegen() override;
+  ReturnExprAST(std::unique_ptr<ASTnode> returnexpr) : ReturnExpr(std::move(returnexpr)) {}
+  // virtual Value *codegen() override = 0;
   virtual std::string to_string() const override {
   //return a string representation of this AST node
     std::string returnExpr = "";
     std::string out = "";
-    if(ReturnExpr != nullptr)
+    if(ReturnExpr != nullptr){
       out = "ReturnStmt\n" + indent() + "--> " + ReturnExpr->to_string();
-    else
-       out = "ReturnStmt: " + Type;
+    }else{
+       out = "ReturnStmt: Null";}
     dedent();
     return out;
   };
@@ -665,22 +673,24 @@ class PrototypeAST : public ASTnode{
   std::vector<std::unique_ptr<VariableASTnode>> Args;
 
 public:
-  PrototypeAST(const std::string &name, std::vector<std::unique_ptr<VariableASTnode>> args)
+  PrototypeAST(const std::string name, std::vector<std::unique_ptr<VariableASTnode>> args)
     : Name(name), Args(std::move(args)) {}
 
-  const std::string &getName() const { return Name; }
+  const std::string getName() const { return Name; }
   // const std::vector<std::string> &getParamNames() const {return Args;}
-    virtual std::string to_string() const override {
+  virtual std::string to_string() const override {
   //return a string representation of this AST node
   std::string args = "";
 
-  for(int i = 0; i < Args.size(); i++)
+  for(int i = 0; i < std::move(Args).size(); i++)
   {
-      args.append("\n" + indent() + "Param: " + Args[i]->to_string());
+      args.append("\n" + indent() + "Param: " + std::move(Args)[i]->to_string());
   } 
   return "FunctionDecl: " + Name + args;
+  dedent();
+  dedent();
   };
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
 };
 
 class FunctionAST : public ASTnode {
@@ -691,8 +701,9 @@ public:
   FunctionAST(std::unique_ptr<PrototypeAST> proto,
               std::unique_ptr<ASTnode> body)
     : Proto(std::move(proto)), Body(std::move(body)) {}
-    virtual Value *codegen() override;
+    // virtual Value *codegen() override = 0;
     virtual std::string to_string() const override {
+  dedent();
   std::string out = "Function: " + Proto->to_string() + "\n" + indent() + "Body:\n" + indent() + Body->to_string();
   dedent();
   return out;
@@ -711,7 +722,7 @@ public:
 
   BlockASTnode(std::vector<std::unique_ptr<ASTnode>> localDecls, std::vector<std::unique_ptr<ASTnode>> stmtList)
       : localDecls(std::move(localDecls)), stmtList(std::move(stmtList)) {}
-  virtual Value *codegen() override;
+  // virtual Value *codegen() override = 0;
 
   // Override virtual methods from ASTnode as needed
   virtual std::string to_string() const override {
@@ -1607,7 +1618,9 @@ std::vector<std::unique_ptr<ASTnode>> local_decls() {
   std::vector<std::unique_ptr<ASTnode>> decls;
   while (isIn(CurTok.type, first_local_decl)) {
     auto decl = local_decl();
-    if (!decl) return {}; // Return an empty vector on error
+    if (!decl) {
+      errorReported = true;
+      return {};} // Return an empty vector on error
     decls.push_back(std::move(decl));
   }
   
@@ -1653,7 +1666,13 @@ std::vector<std::unique_ptr<ASTnode>> local_decls() {
 std::unique_ptr<ASTnode> local_decl() {
   if (isIn(CurTok.type, first_local_decl)) {
     auto typeNode = var_type(); // var_type needs to return an AST node
-    if (typeNode=="") return nullptr;
+    if (typeNode=="") {
+      if (!errorReported)
+        errs() << "Syntax error: Invalid var_type found at line " << CurTok.lineNo << " column " << CurTok.columnNo << ".\n";
+      errorReported = true;
+      return nullptr;
+
+    }
 
     std::string identifier = CurTok.lexeme;
     if (!match(IDENT)) {
@@ -1813,7 +1832,7 @@ std::unique_ptr<ASTnode> expr_stmt() {
       errorReported = true;
       return nullptr;
     }
-    return std::make_unique<ASTnode>();
+    return nullptr;
   }
 }
 
@@ -2598,11 +2617,17 @@ std::unique_ptr<ASTnode> rval8() {
       if (match(IDENT)) {
         return std::make_unique<VariableRefASTnode>(val);
       } else if (match(INT_LIT)) {
-        return std::make_unique<IntASTnode>(val);
+        return std::make_unique<IntASTnode>(std::stoi(val));
       } else if (match(FLOAT_LIT)) {
-        return std::make_unique<FloatASTnode>(val);
+        return std::make_unique<FloatASTnode>(std::stof(val));
       } else if (match(BOOL_LIT)) {
-        return std::make_unique<BoolASTnode>(val);
+        bool b_val;
+        if (val == "true"){
+          b_val = true;
+        }else{
+          b_val = false;
+        }
+        return std::make_unique<BoolASTnode>(b_val);
       } else {
         if (!errorReported) {
           errs() << "Syntax error: Expected '(' or Identifier or INT_LIT or BOOL_LIT or FLOAT_LIT at line " << CurTok.lineNo << " column " << CurTok.columnNo << ".\n";
@@ -2787,10 +2812,10 @@ std::unique_ptr<rootASTnode> program() {
 
 static void parser() {
   getNextToken();
-  fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
-            CurTok.type);
+  // fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
+  //           CurTok.type);
   auto root = program();
-  if (root && CurTok.type == EOF_TOK){
+  if (root && CurTok.type == EOF_TOK && !errorReported){
     // llvm::outs() << root << "\n";
     std::cout<<root->to_string()<<std::endl;
     std::cout<<"Parsing successful."<<std::endl;
@@ -2801,6 +2826,7 @@ static void parser() {
     if(!errorReported)
             {errs()<<"Syntax error: Invalid token1 at line "<<CurTok.lineNo<<" column "<<CurTok.columnNo<<".\n";}
     errorReported = true;
+    std::cout<<"Parsing Failed"<<std::endl;
     // return false;
   }
 }
