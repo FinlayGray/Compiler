@@ -1460,7 +1460,7 @@ std::unique_ptr<ASTnode> expr_stmt() {
       errorReported = true;
       return nullptr;
     }
-    return nullptr;
+    return std::make_unique<ASTnode>();
   }
 }
 
@@ -2053,6 +2053,21 @@ static IRBuilder<> Builder(TheContext);
 static std::unique_ptr<Module> TheModule;
 static std::vector<std::map<std::string,AllocaInst*>> NamedValuesList;
 static std::map<std::string,GlobalVariable*> GlobalVariables;
+
+Value *IntASTnode::codegen() {
+  return ConstantInt::get(TheContext, APInt(32,Val,true)); //int32 type
+}
+
+Value *FloatASTnode::codegen() {
+  return ConstantFP::get(TheContext, APFloat(float(Val)));
+}
+
+Value *BoolASTnode::codegen() {
+  return ConstantInt::get(TheContext, APInt(1,int(Val),false));
+}
+
+
+
 
 
 
