@@ -2179,6 +2179,7 @@ Value *VariableASTnode::codegen() {
     Function *TheFunction = Builder.GetInsertBlock()->getParent();
     AllocaInst *varAlloc = CreateEntryBlockAlloca(TheFunction, Val, Type);
 
+
     // Get the most recent symbol table (current scope)
     std::map<std::string, AllocaInst*> NamedValues = NamedValuesList.back();
     NamedValuesList.pop_back();
@@ -2839,6 +2840,8 @@ Function* PrototypeAST::codegen() {
       ArgTypes.push_back(llvm::Type::getFloatTy(TheContext));
     else if (ArgType == "bool")
       ArgTypes.push_back(llvm::Type::getInt1Ty(TheContext));
+    else if (ArgType == "void")
+      continue;
     else {
       errs() << "Error: Unknown argument type '" << ArgType << "' in function '" << origName << "'.\n";
       return nullptr;
