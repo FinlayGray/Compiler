@@ -532,8 +532,27 @@ class VariableASTnode : public ASTnode {
 public:
   VariableASTnode(std::string type, std::string val) : Val(val), Type(type) {}
   virtual Value *codegen() override;
+  const std::string getType() const { return Type; }
+  const std::string getName() const { return Val; }
   virtual std::string to_string() const override {
     std::string out = "VarDeclaration: " + Type + " " + Val;
+    dedent();
+    return out;
+  };
+
+};
+
+class GlobalVariableASTnode : public ASTnode {
+  std::string Val;
+  std::string Type;
+
+public:
+  GlobalVariableASTnode(std::string type, std::string val) : Val(val), Type(type) {}
+  virtual Value *codegen() override;
+  const std::string getType() const { return Type; }
+  const std::string getName() const { return Val; }
+  virtual std::string to_string() const override {
+    std::string out = "GlobalVarDeclaration: " + Type + " " + Val;
     dedent();
     return out;
   };
@@ -546,6 +565,7 @@ class VariableRefASTnode : public ASTnode{
 
   public:
   VariableRefASTnode(std::string name) : Name(name) {}
+  const std::string getName() const { return Name; }
   virtual Value *codegen() override;
   // virtual TOKEN getTok() const override{
   //   return Tok;
@@ -624,22 +644,7 @@ public:
       virtual Value *codegen() override;
       virtual std::string to_string() const override {
   std::string out = "IfExpr:\n" + indent() + "Condition: " + Cond->to_string();
-  out.append("\n" + indent() + "Then:" + Then->to_string() + "\n"+indent()+"Else:" + Else->to_string());
-  // indent();
-  // for (const auto &stmt : Then) {
-  //   out += indent() + stmt->to_string() + "\n";
-  // }
-  // dedent();
-
-  // if (!Else.empty()) {
-  //   out += indent() + "Else:\n";
-  //   indent();
-  //   for (const auto &stmt : Else) {
-  //     out += indent() + stmt->to_string() + "\n";
-  //   }
-    // dedent();
-  // }
-  
+  out.append("\n" + indent() + "Then:" + Then->to_string() + "\n"+indent()+"Else:" + Else->to_string());  
   dedent();
   return out;
 };
@@ -699,6 +704,8 @@ public:
   PrototypeAST(const std::string name, std::vector<std::unique_ptr<VariableASTnode>> args, const std::string type)
     : Name(name), Type(type), Args(std::move(args)) {}
 
+  virtual Function *codegen() override;
+
   const std::string getName() const { return Name; }
   // const std::vector<std::string> &getParamNames() const {return Args;}
   virtual std::string to_string() const override {
@@ -714,7 +721,7 @@ public:
   // dedent();
   // dedent();
   };
-  virtual Value *codegen() override ;
+  
 };
 
 class FunctionAST : public ASTnode {
@@ -725,7 +732,7 @@ public:
   FunctionAST(std::unique_ptr<PrototypeAST> proto,
               std::unique_ptr<ASTnode> body)
     : Proto(std::move(proto)), Body(std::move(body)) {}
-    virtual Value *codegen() override;
+    virtual Function *codegen() override;
     virtual std::string to_string() const override {
   std::string out = "Function:\n" + indent() + Proto->to_string() + "\n" + indent() + "Body:" + Body->to_string();
   dedent();
@@ -745,7 +752,7 @@ public:
 
   BlockASTnode(std::vector<std::unique_ptr<ASTnode>> localDecls, std::vector<std::unique_ptr<ASTnode>> stmtList)
       : localDecls(std::move(localDecls)), stmtList(std::move(stmtList)) {}
-  virtual Value *codegen() override;
+  virtual Function *codegen() override;
 
   // Override virtual methods from ASTnode as needed
   virtual std::string to_string() const override {
@@ -1102,7 +1109,7 @@ std::unique_ptr<ASTnode> var_decl() {
     return nullptr;
   }
 
-  return std::make_unique<VariableASTnode>(typeNode, identifier);
+  return std::make_unique<GlobalVariableASTnode>(typeNode, identifier);
 }
 
 //COULD CHANGE 
@@ -1460,7 +1467,7 @@ std::unique_ptr<ASTnode> expr_stmt() {
       errorReported = true;
       return nullptr;
     }
-    return std::make_unique<ASTnode>();
+    return std::make_unique<VariableRefASTnode>("comma");
   }
 }
 
@@ -2032,6 +2039,7 @@ static void parser() {
     // llvm::outs() << root << "\n";
     std::cout<<root->to_string()<<std::endl;
     std::cout<<"Parsing successful."<<std::endl;
+    root->codegen();
     // return true;
 
   }
@@ -2054,6 +2062,75 @@ static std::unique_ptr<Module> TheModule;
 static std::vector<std::map<std::string,AllocaInst*>> NamedValuesList;
 static std::map<std::string,GlobalVariable*> GlobalVariables;
 
+// helper functions
+
+Value* loadValue(Value* val) {
+  if (auto *AI = dyn_cast<AllocaInst>(val)) {
+    if (AI->getAllocatedType()->isFloatTy())
+      return Builder.CreateLoad(Type::getFloatTy(TheContext), AI, "load_temp_float");
+    else if (AI->getAllocatedType()->isIntegerTy(32))
+      return Builder.CreateLoad(Type::getInt32Ty(TheContext), AI, "load_temp_int");
+    else if (AI->getAllocatedType()->isIntegerTy(1))
+      return Builder.CreateLoad(Type::getInt1Ty(TheContext), AI, "load_temp_bool");
+  } else if (auto *GV = dyn_cast<GlobalVariable>(val)) {
+    if (GV->getValueType()->isFloatTy())
+      return Builder.CreateLoad(Type::getFloatTy(TheContext), GV, "load_global_temp_gloat");
+    else if (GV->getValueType()->isIntegerTy(32))
+      return Builder.CreateLoad(Type::getInt32Ty(TheContext), GV, "load_global_temp_float");
+    else if (GV->getValueType()->isIntegerTy(1))
+      return Builder.CreateLoad(Type::getInt1Ty(TheContext), GV, "load_global_temp_bool");
+  }
+  return val;
+}
+
+std::string getTypeString(Type* type) {
+  if (type->isFloatTy())
+    return "float";
+  else if (type->isIntegerTy(32))
+    return "int";
+  else if (type->isIntegerTy(1))
+    return "bool";
+  return "unknown";
+}
+
+int getOperandType(Value* val) {
+  if (val->getType()->isIntegerTy(1))
+    return 0;
+  else if (val->getType()->isIntegerTy(32))
+    return 1;
+  else if (val->getType()->isFloatTy())
+    return 2;
+  return -1; // Unknown type
+}
+
+Value* performWideningConversion(Value* val, int fromType, int toType) {
+  if (fromType < toType) { // Widening conversion needed
+    if (toType == 2) { // Convert to float
+      if (fromType == 0) // bool to float
+        val = Builder.CreateIntCast(val, Type::getInt32Ty(TheContext), false);
+      return Builder.CreateCast(Instruction::SIToFP, val, Type::getFloatTy(TheContext), "cast_to_float");
+    } else if (toType == 1) { // Convert to int
+      return Builder.CreateIntCast(val, Type::getInt32Ty(TheContext), false, "cast_to_int");
+    }
+  }
+  return val;
+}
+
+
+static AllocaInst* CreateEntryBlockAlloca(Function *TheFunction, std::string &VarName, std::string type) {
+  IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
+  TheFunction->getEntryBlock().begin());
+  if(type == "int")
+    return TmpB.CreateAlloca(Type::getInt32Ty(TheContext), 0, VarName.c_str()); 
+  else if(type == "float")
+    return TmpB.CreateAlloca(Type::getFloatTy(TheContext), 0, VarName.c_str());
+  else if(type == "bool")
+    return TmpB.CreateAlloca(Type::getInt1Ty(TheContext), 0, VarName.c_str());
+  else
+    return nullptr;
+}
+
+
 Value *IntASTnode::codegen() {
   return ConstantInt::get(TheContext, APInt(32,Val,true)); //int32 type
 }
@@ -2064,6 +2141,969 @@ Value *FloatASTnode::codegen() {
 
 Value *BoolASTnode::codegen() {
   return ConstantInt::get(TheContext, APInt(1,int(Val),false));
+}
+
+Value *VariableRefASTnode::codegen() {
+  AllocaInst *V;
+
+  std::map<std::string, AllocaInst*> NamedValues;
+  for(int i = NamedValuesList.size() - 1; i >= 0; i--)
+  {
+    NamedValues = NamedValuesList[i];
+    V = NamedValues[Name];
+    if(!V)
+    {
+      continue;
+    }
+    else
+    {
+      return V;
+    }
+
+  }
+  
+  GlobalVariable *GV = GlobalVariables[Name];
+  if(!GV)
+  {
+    errs()<<"Semantic error: Unknown variable name: "<<Name<<".\n";
+    return nullptr;
+  }
+  else 
+  {
+    return GV;
+  }
+}
+
+
+Value *VariableASTnode::codegen() {
+    Function *TheFunction = Builder.GetInsertBlock()->getParent();
+    AllocaInst *varAlloc = CreateEntryBlockAlloca(TheFunction, Val, Type);
+
+    // Get the most recent symbol table (current scope)
+    std::map<std::string, AllocaInst*> NamedValues = NamedValuesList.back();
+    NamedValuesList.pop_back();
+
+    // Check if the variable already exists in the current scope
+    if (NamedValues.find(Val) != NamedValues.end()) {
+        // Get the type of the existing variable
+        std::string existingType = getTypeString(NamedValues[Val]->getAllocatedType());
+
+        // Report a semantic error for redefinition
+        // errs() << "Semantic error: Redefinition of variable " << Val
+        //        << " at column no. " << Tok.columnNo
+        //        << ", line no. " << Tok.lineNo << ".\n"
+        //        << "Variable " << Val << " of type " << existingType
+        //        << " already exists within the current scope.\n";
+        errs() << "Semantic error: Redefinition of variable " << Val
+               << " at column no., line no. .\nVariable"  << Val << " of type " << existingType
+               << " already exists within the current scope.\n";
+        return nullptr;
+    }
+
+    // Insert the new variable into the symbol table
+    NamedValues[Val] = varAlloc;
+
+    // Push the updated symbol table back to the vector
+    NamedValuesList.push_back(NamedValues);
+
+    return varAlloc;
+}
+
+
+
+Value* UnaryExprASTnode::codegen() {
+  Value* operand = Operand->codegen();
+  if (!operand)
+    return nullptr;
+
+  operand = loadValue(operand);
+  int operandType = getOperandType(operand);
+  std::string typeStr = getTypeString(operand->getType());
+
+  if (Opcode == "!") {
+    if (operandType == 0)
+      return Builder.CreateNot(operand, "not_temp");
+    else {
+      errs() << "Semantic error: Cannot cast from `" << typeStr << "` to `bool`.\n";
+      return nullptr;
+    }
+  } else if (Opcode == "-") {
+    if (operandType == 0) // bool to int
+      operand = Builder.CreateIntCast(operand, Type::getInt32Ty(TheContext), false);
+    if (operandType == 2) // float
+      return Builder.CreateFNeg(operand, "fneg_temp");
+    return Builder.CreateNeg(operand, "neg_temp");
+  }
+
+  return nullptr;
+}
+
+
+Value* BinaryExprASTnode::codegen() {
+  Value* lhs = loadValue(LHS->codegen());
+  if (!lhs) return nullptr;
+
+  if (Opcode == "&&" && lhs == ConstantInt::get(TheContext, APInt(1, false)))
+    return ConstantInt::get(TheContext, APInt(1, false));
+  if (Opcode == "||" && lhs == ConstantInt::get(TheContext, APInt(1, true)))
+    return ConstantInt::get(TheContext, APInt(1, true));
+
+  Value* rhs = loadValue(RHS->codegen());
+  if (!rhs) return nullptr;
+
+  int lhsType = getOperandType(lhs);
+  int rhsType = getOperandType(rhs);
+  lhs = performWideningConversion(lhs, lhsType, rhsType);
+  rhs = performWideningConversion(rhs, rhsType, lhsType);
+
+  if (Opcode == "+")
+    return lhs->getType()->isFloatTy() ? Builder.CreateFAdd(lhs, rhs, "fadd_tmp") : Builder.CreateAdd(lhs, rhs, "add_tmp");
+  else if (Opcode == "-")
+    return lhs->getType()->isFloatTy() ? Builder.CreateFSub(lhs, rhs, "fsub_tmp") : Builder.CreateSub(lhs, rhs, "sub_tmp");
+  else if (Opcode == "*")
+    return lhs->getType()->isFloatTy() ? Builder.CreateFMul(lhs, rhs, "fmul_tmp") : Builder.CreateMul(lhs, rhs, "mul_tmp");
+  else if (Opcode == "/") {
+    if (rhs == ConstantInt::get(TheContext, APInt(32, 0)) || rhs == ConstantFP::get(TheContext, APFloat(0.0f))) {
+      errs() << "Semantic error: Division by zero.\n";
+      return nullptr;
+    }
+    return lhs->getType()->isFloatTy() ? Builder.CreateFDiv(lhs, rhs, "fdiv_tmp") : Builder.CreateSDiv(lhs, rhs, "div_tmp");
+  }
+
+  return nullptr;
+}
+
+Value* CallExprAST::codegen() {
+  // Look up the function in the module.
+  Function *CalleeF = TheModule->getFunction(Callee);
+  if (!CalleeF) {
+    // errs() << "Semantic error: Unknown function " << Callee << " referenced at line no. "
+    //        << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
+    errs() << "Semantic error: Unknown function " << Callee;
+    return nullptr;
+  }
+
+  // Check if the number of arguments matches.
+  if (CalleeF->arg_size() != Args.size()) {
+    // errs() << "Semantic error: Incorrect number of arguments for function " << Callee
+    //        << " at line no. " << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
+        errs() << "Semantic error: Incorrect number of arguments for function " << Callee;
+    return nullptr;
+  }
+
+  std::vector<Value *> ArgsV;
+  for (unsigned i = 0, e = Args.size(); i != e; ++i) {
+    Value* arg = loadValue(Args[i]->codegen());
+    if (!arg) return nullptr;
+
+    int argType = getOperandType(arg);
+    Type* expectedType = CalleeF->getArg(i)->getType();
+    int expectedTypeInt = getOperandType(CalleeF->getArg(i));
+
+    // Perform widening conversion if necessary.
+    if (argType != expectedTypeInt) {
+      arg = performWideningConversion(arg, argType, expectedTypeInt);
+      if (!arg) {
+        errs() << "Semantic error: Cannot cast from `" << getTypeString(arg->getType())
+               << "` to `" << getTypeString(expectedType) << "` at line no. ";
+              //  << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
+        return nullptr;
+      }
+    }
+
+    ArgsV.push_back(arg);
+  }
+
+  // Create the function call.
+  if (CalleeF->getReturnType()->isVoidTy()) {
+    return Builder.CreateCall(CalleeF, ArgsV);
+  } else {
+    return Builder.CreateCall(CalleeF, ArgsV, "call_tmp");
+  }
+}
+// Value* IfExprAST::codegen() {
+//   // Check if else block exists
+//   bool elseExists = (Else != nullptr);
+
+//   // Get the parent function
+//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
+
+//   // Create necessary basic blocks and associate them with the function
+//   BasicBlock* trueBlock = BasicBlock::Create(TheContext, "if_then", TheFunction);
+//   BasicBlock* falseBlock = elseExists ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
+//   BasicBlock* endBlock = BasicBlock::Create(TheContext, "if_end", TheFunction);
+
+//   // Generate the condition expression
+//   Value* cond = Cond->codegen();
+//   if (!cond)
+//     return nullptr;
+
+//   // Ensure the condition is a boolean type
+//   if (!cond->getType()->isIntegerTy(1)) {
+//     errs() << "Error: Condition of if statement must be of boolean type.\n";
+//     return nullptr;
+//   }
+
+//   // Create a comparison for the boolean condition
+//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "if_cond");
+
+//   // Create the conditional branch
+//   if (elseExists)
+//     Builder.CreateCondBr(comp, trueBlock, falseBlock);
+//   else
+//     Builder.CreateCondBr(comp, trueBlock, endBlock);
+
+//   // Generate code for the 'then' block
+//   Builder.SetInsertPoint(trueBlock);
+//   std::map<std::string, AllocaInst*> NamedValues_Then;
+//   NamedValuesList.push_back(NamedValues_Then);
+
+//   Value* thenVal = Then->codegen();
+//   if (!thenVal)
+//     return nullptr;
+
+//   // Branch to end block if no return statement was encountered
+//   if (!isa<ReturnInst>(thenVal)) {
+//     Builder.CreateBr(endBlock);
+//   }
+//   NamedValuesList.pop_back();
+
+//   // Generate code for the 'else' block if it exists
+//   if (elseExists) {
+//     Builder.SetInsertPoint(falseBlock);
+//     std::map<std::string, AllocaInst*> NamedValues_Else;
+//     NamedValuesList.push_back(NamedValues_Else);
+
+//     Value* elseVal = Else->codegen();
+//     if (!elseVal)
+//       return nullptr;
+
+//     if (!isa<ReturnInst>(elseVal)) {
+//       Builder.CreateBr(endBlock);
+//     }
+//     NamedValuesList.pop_back();
+//   }
+
+//   // Set the insertion point to the end block
+//   Builder.SetInsertPoint(endBlock);
+
+//   // Return a null value for void functions
+//   if (TheFunction->getReturnType()->isVoidTy()) {
+//     return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
+//   }
+
+//   // Return an undefined value for other return types
+//   return UndefValue::get(TheFunction->getReturnType());
+// }
+
+// Value* IfExprAST::codegen() {
+//   bool elseExist;
+//   if (Else == nullptr){
+//     elseExist = false;
+//   }else{
+//     elseExist = true;
+//   }
+  
+//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
+//   BasicBlock* true_ = BasicBlock::Create(TheContext, "if_then", TheFunction);
+//   BasicBlock* false_ = elseExist ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
+//   BasicBlock* end_ = BasicBlock::Create(TheContext, "if_end");
+
+//   Value* cond = loadValue(Cond->codegen());
+//   if (!cond) return nullptr;
+
+//   int condType = getOperandType(cond);
+//   if (condType != 0) { // Check if condition is a bool
+//     errs() << "Semantic error: Expected type `bool` for the condition statement at line no. ";
+//           //  << Cond->getTok().lineNo << " column no. " << Cond->getTok().columnNo << ".\n";
+//     return nullptr;
+//   }
+
+//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0, false)), "if_cond");
+//   Builder.CreateCondBr(comp, true_, elseExist ? false_ : end_);
+//   Builder.SetInsertPoint(true_);
+
+//   // Generate 'then' block.
+//   stmt =
+//   if (!Then->codegen()) return nullptr;
+  
+//   Builder.CreateBr(end_);
+
+//   // Generate 'else' block if it exists.
+//   if (elseExist) {
+//     TheFunction->getBasicBlockList().push_back(false_);
+//     Builder.SetInsertPoint(false_);
+//     for (auto& stmt : Else) {
+//       if (!stmt->codegen()) return nullptr;
+//     }
+//     Builder.CreateBr(end_);
+//   }
+
+//   TheFunction->getBasicBlockList().push_back(end_);
+//   Builder.SetInsertPoint(end_);
+//   return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
+// }
+// Value* IfExprAST::codegen() {
+//   // Check if else block exists
+//   bool elseExist = (Else != nullptr);
+
+//   // Create necessary basic blocks
+//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
+//   BasicBlock* true_ = BasicBlock::Create(TheContext, "if_then", TheFunction);
+//   BasicBlock* false_ = elseExist ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
+//   BasicBlock* end_ = BasicBlock::Create(TheContext, "if_end");
+
+//   // Generate condition expression
+//   Value* cond = Cond->codegen();
+//   if (!cond)
+//     return nullptr;
+
+//   // Ensure the condition is of boolean type
+//   cond = loadValue(cond);
+//   std::string currType = getTypeString(cond->getType());
+//   if (currType != "bool") {
+//     errs() << "Semantic error: Expected type `bool` for the condition statement at line no. ";
+//           //  << Cond->getTok().lineNo << " column no. " << Cond->getTok().columnNo
+//           //  << ". Cannot cast from type `" << currType << "` to `bool`.\n";
+//     return nullptr;
+//   }
+
+//   // Create comparison for boolean condition
+//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0, false)), "if_cond");
+
+//   // Create conditional branch
+//   if (elseExist)
+//     Builder.CreateCondBr(comp, true_, false_);
+//   else
+//     Builder.CreateCondBr(comp, true_, end_);
+
+//   // Generate `if_then` block
+//   Builder.SetInsertPoint(true_);
+//   std::map<std::string, AllocaInst*> NamedValues_Then;
+//   NamedValuesList.push_back(NamedValues_Then);
+
+//   bool generateBranchForThen = true;
+//   Value* ret = nullptr;
+
+//   for (auto& stmt : Then) {
+//     Value* thenVal = stmt->codegen();
+//     if (!thenVal)
+//       return nullptr;
+//     if (dyn_cast<ReturnInst>(thenVal)) {
+//       ret = thenVal;
+//       generateBranchForThen = false;
+//       break;
+//     }
+//   }
+//   NamedValuesList.pop_back();
+
+//   if (generateBranchForThen)
+//     Builder.CreateBr(end_);
+
+//   // Generate `if_else` block if it exists
+//   if (elseExist) {
+//     Builder.SetInsertPoint(false_);
+//     std::map<std::string, AllocaInst*> NamedValues_Else;
+//     NamedValuesList.push_back(NamedValues_Else);
+
+//     Value* elseVal = Else->codegen();
+//     if (!elseVal)
+//       return nullptr;
+//     if (dyn_cast<ReturnInst>(elseVal)) {
+//       ret = elseVal;
+//       generateBranchForThen = false;
+//     } else {
+//       Builder.CreateBr(end_);
+//     }
+
+//     NamedValuesList.pop_back();
+//   }
+
+//   // Generate `if_end` block
+//   if (generateBranchForThen) {
+//     TheFunction->insert(TheFunction->end(), end_);
+//     Builder.SetInsertPoint(end_);
+//     return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
+//   } else {
+//     return ret;
+//   }
+// }
+// Value* IfExprAST::codegen() {
+//   // Check if else block exists
+//   bool elseExists = (Else != nullptr);
+
+//   // Get the parent function
+//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
+
+//   // Create necessary basic blocks
+//   BasicBlock* trueBlock = BasicBlock::Create(TheContext, "if_then", TheFunction);
+//   BasicBlock* falseBlock = elseExists ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
+//   BasicBlock* endBlock = BasicBlock::Create(TheContext, "if_end", TheFunction);
+
+//   // Generate the condition expression
+//   Value* cond = Cond->codegen();
+//   if (!cond)
+//     return nullptr;
+
+//   // Ensure the condition is a boolean type
+//   if (!cond->getType()->isIntegerTy(1)) {
+//     errs() << "Error: Condition of if statement must be of boolean type.\n";
+//     return nullptr;
+//   }
+
+//   // Create a comparison for the boolean condition
+//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "if_cond");
+
+//   // Create the conditional branch
+//   if (elseExists)
+//     Builder.CreateCondBr(comp, trueBlock, falseBlock);
+//   else
+//     Builder.CreateCondBr(comp, trueBlock, endBlock);
+
+//   // Generate code for the 'then' block
+//   Builder.SetInsertPoint(trueBlock);
+//   std::map<std::string, AllocaInst*> NamedValues_Then;
+//   NamedValuesList.push_back(NamedValues_Then);
+
+//   Value* thenVal = Then->codegen();
+//   if (!thenVal)
+//     return nullptr;
+
+//   // Branch to end block if no return statement was encountered
+//   if (!thenVal->getType()->isVoidTy()) {
+//     Builder.CreateBr(endBlock);
+//   }
+//   NamedValuesList.pop_back();
+
+//   // Generate code for the 'else' block if it exists
+//   if (elseExists) {
+//     Builder.SetInsertPoint(falseBlock);
+//     std::map<std::string, AllocaInst*> NamedValues_Else;
+//     NamedValuesList.push_back(NamedValues_Else);
+
+//     Value* elseVal = Else->codegen();
+//     if (!elseVal)
+//       return nullptr;
+
+//     if (!elseVal->getType()->isVoidTy()) {
+//       Builder.CreateBr(endBlock);
+//     }
+//     NamedValuesList.pop_back();
+//   }
+
+//   // Set the insertion point to the end block and finalize it
+//   TheFunction->getBasicBlockList().push_back(endBlock);
+//   Builder.SetInsertPoint(endBlock);
+
+//   // Return a null value for void functions
+//   if (TheFunction->getReturnType()->isVoidTy())
+//     return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
+  
+//   // Otherwise, return the result of the block (could be a phi node if merging values)
+//   return UndefValue::get(TheFunction->getReturnType());
+// }
+Value* IfExprAST::codegen() {
+  // Check if else block exists
+  bool elseExists = (Else != nullptr);
+
+  // Get the parent function
+  Function* TheFunction = Builder.GetInsertBlock()->getParent();
+
+  // Create necessary basic blocks and associate them with the function
+  BasicBlock* trueBlock = BasicBlock::Create(TheContext, "if_then", TheFunction);
+  BasicBlock* falseBlock = elseExists ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
+  BasicBlock* endBlock = BasicBlock::Create(TheContext, "if_end", TheFunction);
+
+  // Generate the condition expression
+  Value* cond = Cond->codegen();
+  if (!cond)
+    return nullptr;
+
+  // Load the condition value if necessary
+  cond = loadValue(cond);
+
+  // Ensure the condition is a boolean type
+  if (!cond->getType()->isIntegerTy(1)) {
+    errs() << "Error: Condition of if statement must be of boolean type.\n";
+    return nullptr;
+  }
+
+  // Create a comparison for the boolean condition
+  Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "if_cond");
+
+  // Create the conditional branch
+  if (elseExists)
+    Builder.CreateCondBr(comp, trueBlock, falseBlock);
+  else
+    Builder.CreateCondBr(comp, trueBlock, endBlock);
+
+  // Generate code for the 'then' block
+  Builder.SetInsertPoint(trueBlock);
+  std::map<std::string, AllocaInst*> NamedValues_Then;
+  NamedValuesList.push_back(NamedValues_Then);
+
+  Value* thenVal = Then->codegen();
+  if (!thenVal)
+    return nullptr;
+
+  // Branch to end block if no return statement was encountered
+  if (!isa<ReturnInst>(thenVal)) {
+    Builder.CreateBr(endBlock);
+  }
+  NamedValuesList.pop_back();
+
+  // Generate code for the 'else' block if it exists
+  if (elseExists) {
+    Builder.SetInsertPoint(falseBlock);
+    std::map<std::string, AllocaInst*> NamedValues_Else;
+    NamedValuesList.push_back(NamedValues_Else);
+
+    Value* elseVal = Else->codegen();
+    if (!elseVal)
+      return nullptr;
+
+    if (!isa<ReturnInst>(elseVal)) {
+      Builder.CreateBr(endBlock);
+    }
+    NamedValuesList.pop_back();
+  }
+
+  // Set the insertion point to the end block
+  Builder.SetInsertPoint(endBlock);
+
+  // Return nullptr for void functions
+  if (TheFunction->getReturnType()->isVoidTy()) {
+    return nullptr;
+  }
+
+  // Return an undefined value for other return types
+  return UndefValue::get(TheFunction->getReturnType());
+}
+
+
+
+Value* WhileExprAST::codegen() {
+  Function* TheFunction = Builder.GetInsertBlock()->getParent();
+  BasicBlock* cond_ = BasicBlock::Create(TheContext, "while_cond", TheFunction);
+  BasicBlock* body_ = BasicBlock::Create(TheContext, "while_body", TheFunction);
+  BasicBlock* end_ = BasicBlock::Create(TheContext, "while_end");
+
+  // Jump to condition block
+  Builder.CreateBr(cond_);
+  Builder.SetInsertPoint(cond_);
+
+  // Generate condition expression
+  Value* cond = Cond->codegen();
+  if (!cond)
+    return nullptr;
+  cond = loadValue(cond);
+
+  // Ensure the condition is of boolean type
+  std::string currType = getTypeString(cond->getType());
+  if (currType != "bool") {
+    errs() << "Semantic error: Expected type `bool` for the condition statement at line no. ";
+          //  << Cond->getTok().lineNo << " column no. " << Cond->getTok().columnNo
+          //  << ". Cannot cast from type `" << currType << "` to `bool`.\n";
+    return nullptr;
+  }
+
+  // Create comparison for boolean condition
+  Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0, false)), "while_cond");
+
+  // Create conditional branch
+  Builder.CreateCondBr(comp, body_, end_);
+
+  // Generate `while_body` block
+  Builder.SetInsertPoint(body_);
+  std::map<std::string, AllocaInst*> NamedValues_Body;
+  NamedValuesList.push_back(NamedValues_Body);
+
+  bool generateBranchForBody = true;
+  Value* bodyVal = Then->codegen();
+  if (!bodyVal)
+      return nullptr;
+  if (dyn_cast<ReturnInst>(bodyVal)) {
+      generateBranchForBody = false;
+  }
+
+  if (generateBranchForBody)
+    Builder.CreateBr(cond_);
+  NamedValuesList.pop_back();
+
+  // Generate `while_end` block
+  TheFunction->insert(TheFunction->end(), end_);
+  Builder.SetInsertPoint(end_);
+  return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
+}
+// Value* WhileExprAST::codegen() {
+//   // Get the parent function
+//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
+
+//   // Create basic blocks for the loop
+//   BasicBlock* condBlock = BasicBlock::Create(TheContext, "while_cond", TheFunction);
+//   BasicBlock* bodyBlock = BasicBlock::Create(TheContext, "while_body", TheFunction);
+//   BasicBlock* endBlock = BasicBlock::Create(TheContext, "while_end");
+
+//   // Jump to the condition block
+//   Builder.CreateBr(condBlock);
+//   Builder.SetInsertPoint(condBlock);
+
+//   // Generate the condition expression
+//   Value* cond = Cond->codegen();
+//   if (!cond)
+//     return nullptr;
+
+//   // Ensure the condition is of boolean type
+//   if (!cond->getType()->isIntegerTy(1)) {
+//     errs() << "Semantic error: Expected type `bool` for the condition statement.\n";
+//     return nullptr;
+//   }
+
+//   // Create comparison for the boolean condition
+//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "while_cond");
+
+//   // Create conditional branch based on the comparison
+//   Builder.CreateCondBr(comp, bodyBlock, endBlock);
+
+//   // Generate code for the loop body
+//   Builder.SetInsertPoint(bodyBlock);
+//   std::map<std::string, AllocaInst*> NamedValues_Body;
+//   NamedValuesList.push_back(NamedValues_Body);
+
+//   // Generate the body code
+//   Value* bodyVal = Then->codegen();
+//   if (!bodyVal)
+//     return nullptr;
+
+//   // Branch back to the condition block to continue the loop
+//   Builder.CreateBr(condBlock);
+//   NamedValuesList.pop_back();
+
+//   // Insert the `endBlock` into the function and set the insertion point
+//   TheFunction->getBasicBlockList().push_back(endBlock);
+//   Builder.SetInsertPoint(endBlock);
+
+//   // Return a null value for void functions
+//   return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
+// }
+
+
+
+
+Value* ReturnExprAST::codegen() {
+  if (!ReturnExpr)
+    return Builder.CreateRetVoid();
+
+  Value* returnExpr = ReturnExpr->codegen();
+  if (!returnExpr)
+    return nullptr;
+
+  returnExpr = loadValue(returnExpr);
+
+  std::string actualType = getTypeString(returnExpr->getType());
+  // std::string correctType = FuncReturnType;
+
+  // Handle type mismatch with widening conversion if possible
+  // FIX THIS ------------------------------------------------------------------------------------------------------
+  // if (correctType != actualType) {
+  //   int fromType = getOperandType(returnExpr);
+  //   int toType = (correctType == "int") ? 1 : (correctType == "float") ? 2 : 0;
+
+  //   if (toType < fromType) {
+  //     errs() << "Semantic Error: Incorrect return type `" << actualType
+  //            << "` used at line no: " << Tok.lineNo << " column no: " << Tok.columnNo
+  //            << ". Cannot cast to expected return type `" << correctType << "`.\n";
+  //     return nullptr;
+  //   }
+
+    // Perform widening conversion
+  //   returnExpr = performWideningConversion(returnExpr, fromType, toType);
+  // }
+
+  return Builder.CreateRet(returnExpr);
+}
+
+// Value* PrototypeAST::codegen() {
+//   // Extract return type and function name
+//   std::string ReturnType;
+//   std::string origName = getName();
+//   size_t space_pos = origName.find(" ");
+
+//   if (space_pos != std::string::npos)
+//     ReturnType = origName.substr(0, space_pos);
+
+//   origName = origName.substr(space_pos + 1);
+
+//   if (ReturnType == "extern") {
+//     size_t space_pos_2 = origName.find(" ");
+//     if (space_pos_2 != std::string::npos) {
+//       ReturnType = origName.substr(0, space_pos_2);
+//       origName = origName.substr(space_pos_2 + 1);
+//     }
+//   }
+
+//   std::vector<llvm::Type*> ArgTypes;
+//   for (auto& Arg : Args) {
+//     std::string ArgType = Arg->getType();
+//     if (ArgType == "int")
+//       ArgTypes.push_back(llvm::Type::getInt32Ty(TheContext));
+//     else if (ArgType == "float")
+//       ArgTypes.push_back(llvm::Type::getFloatTy(TheContext));
+//     else if (ArgType == "bool")
+//       ArgTypes.push_back(llvm::Type::getInt1Ty(TheContext));
+//   }
+
+//   llvm::Type* RetType = nullptr;
+//   if (ReturnType == "int")
+//     RetType = llvm::Type::getInt32Ty(TheContext);
+//   else if (ReturnType == "float")
+//     RetType = llvm::Type::getFloatTy(TheContext);
+//   else if (ReturnType == "bool")
+//     RetType = llvm::Type::getInt1Ty(TheContext);
+//   else if (ReturnType == "void")
+//     RetType = llvm::Type::getVoidTy(TheContext);
+
+//   if (!RetType)
+//     return nullptr;
+
+//   llvm::FunctionType* FT = llvm::FunctionType::get(RetType, ArgTypes, false);
+//   llvm::Function* F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, origName, TheModule.get());
+
+//   // Set names for all arguments
+//   unsigned Idx = 0;
+//   for (auto& Arg : F->args()) {
+//     Arg.setName(getName(Idx++));
+//   }
+
+//   return F;
+// }
+
+Value* GlobalVariableASTnode::codegen() {
+  std::string ty = getType();
+  llvm::Type* t = nullptr;
+  int alignSize = 4;
+
+  if (ty == "int")
+    t = Type::getInt32Ty(TheContext);
+  else if (ty == "float")
+    t = Type::getFloatTy(TheContext);
+  else if (ty == "bool") {
+    t = Type::getInt1Ty(TheContext);
+    alignSize = 1;
+  } else {
+    return nullptr;
+  }
+
+  GlobalVariable* g = new GlobalVariable(
+    *(TheModule.get()), t, false, GlobalValue::CommonLinkage, Constant::getNullValue(t), Val);
+  g->setAlignment(MaybeAlign(alignSize));
+
+  if (!GlobalVariables.insert({Val, g}).second) {
+    std::string existTy = getTypeString(GlobalVariables[Val]->getValueType());
+    errs() << "Semantic error: Redefinition of global variable `" << Val << "` with type `" << ty;
+          //  << "` at line " << Tok.lineNo << " column " << Tok.columnNo << ". Variable of type `" << existTy
+          //  << "` already exists.\n";
+    return nullptr;
+  }
+
+  return g;
+}
+
+
+Function* PrototypeAST::codegen() {
+  // Use the member `Type` directly for return type
+  std::string ReturnType = Type;
+  std::string origName = Name;
+
+  // Determine the return LLVM type
+  llvm::Type* RetType = nullptr;
+  if (ReturnType == "int")
+    RetType = llvm::Type::getInt32Ty(TheContext);
+  else if (ReturnType == "float")
+    RetType = llvm::Type::getFloatTy(TheContext);
+  else if (ReturnType == "bool")
+    RetType = llvm::Type::getInt1Ty(TheContext);
+  else if (ReturnType == "void")
+    RetType = llvm::Type::getVoidTy(TheContext);
+
+  if (!RetType) {
+    errs() << "Error: Unknown return type '" << ReturnType << "' for function '" << origName << "'.\n";
+    return nullptr;
+  }
+
+  // Prepare argument types
+  std::vector<llvm::Type*> ArgTypes;
+  for (const auto& Arg : Args) {
+    std::string ArgType = Arg->getType();
+    if (ArgType == "int")
+      ArgTypes.push_back(llvm::Type::getInt32Ty(TheContext));
+    else if (ArgType == "float")
+      ArgTypes.push_back(llvm::Type::getFloatTy(TheContext));
+    else if (ArgType == "bool")
+      ArgTypes.push_back(llvm::Type::getInt1Ty(TheContext));
+    else {
+      errs() << "Error: Unknown argument type '" << ArgType << "' in function '" << origName << "'.\n";
+      return nullptr;
+    }
+  }
+
+  // Create the function type
+  llvm::FunctionType* FT = llvm::FunctionType::get(RetType, ArgTypes, false);
+  llvm::Function* F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, origName, TheModule.get());
+
+  // Set names for all arguments
+  unsigned Idx = 0;
+  for (auto& Arg : F->args()) {
+    Arg.setName(Args[Idx]->getName());
+    Idx++;
+  }
+
+  return F;
+}
+
+// Function* FunctionAST::codegen() {
+//   Function* TheFunction = TheModule->getFunction(Proto->getName());
+
+//   if (!TheFunction)
+//     TheFunction = Proto->codegen();
+//   if (!TheFunction)
+//     return nullptr;
+
+//   BasicBlock* BB = BasicBlock::Create(TheContext, "entry", TheFunction);
+//   Builder.SetInsertPoint(BB);
+
+//   std::map<std::string, AllocaInst*> NamedValues;
+
+//   // Register function arguments in the symbol table
+//   for (auto& Arg : TheFunction->args()) {
+//     std::string type = getTypeString(Arg.getType());
+//     AllocaInst* Alloca = CreateEntryBlockAlloca(TheFunction, Arg.getName().str(), type);
+//     Builder.CreateStore(&Arg, Alloca);
+//     NamedValues[Arg.getName().str()] = Alloca;
+//   }
+
+//   NamedValuesList.push_back(NamedValues);
+
+//   std::string returnType = getTypeString(TheFunction->getReturnType());
+//   bool returnSet = false;
+
+//   // Check if Body is empty, which is an error if the function has a non-void return type
+//   if (!Body && returnType != "void") {
+//     errs() << "Semantic Error: Return statement of type " << returnType
+//            << " expected in function " << Proto->getName() << ".\n";
+//     return nullptr;
+//   }
+
+//   // Generate code for the single Body node
+//   Value* RetVal = Body ? Body->codegen() : nullptr;
+//   if (!RetVal) {
+//     return nullptr;
+//   }
+
+//   // Check if the function return type is void and create a return statement accordingly
+//   if (isa<ReturnInst>(RetVal)) {
+//     returnSet = true;
+//   } else if (returnType == "void") {
+//     Builder.CreateRetVoid();
+//     returnSet = true;
+//   } else {
+//     errs() << "Semantic Error: Return statement of type " << returnType
+//            << " expected in function " << Proto->getName() << ".\n";
+//     return nullptr;
+//   }
+
+//   verifyFunction(*TheFunction);
+//   NamedValuesList.pop_back();
+
+//   return TheFunction;
+// }
+
+Function* FunctionAST::codegen() {
+  // Retrieve or create the function definition from the prototype
+  Function* TheFunction = TheModule->getFunction(Proto->getName());
+  if (!TheFunction)
+    TheFunction = Proto->codegen();
+  if (!TheFunction)
+    return nullptr;
+
+  // Create the entry basic block and set the insertion point
+  BasicBlock* BB = BasicBlock::Create(TheContext, "entry", TheFunction);
+  Builder.SetInsertPoint(BB);
+
+  // Symbol table for named values in this function scope
+  std::map<std::string, AllocaInst*> NamedValues;
+
+  // Register function arguments in the symbol table
+  // for (auto& Arg : TheFunction->args()) {
+  //   std::string type = getTypeString(Arg.getType());
+  //   AllocaInst* Alloca = CreateEntryBlockAlloca(TheFunction, Arg.getName().str(), type);
+  //   Builder.CreateStore(&Arg, Alloca);
+  //   NamedValues[Arg.getName().str()] = Alloca;
+  // }
+  for (auto& Arg : TheFunction->args()) {
+    std::string type = getTypeString(Arg.getType());
+    std::string varName = Arg.getName().str(); // Create a named std::string
+    AllocaInst* Alloca = CreateEntryBlockAlloca(TheFunction, varName, type); // Pass the named variable
+    Builder.CreateStore(&Arg, Alloca);
+    NamedValues[Arg.getName().str()] = Alloca;
+}
+
+
+  // Push the symbol table context for this function
+  NamedValuesList.push_back(NamedValues);
+
+  // Generate code for the function body using the BlockASTnode's codegen
+  Value* RetVal = Body ? Body->codegen() : nullptr;
+  if (!RetVal) {
+    NamedValuesList.pop_back();
+    return nullptr;
+  }
+
+  // Check if we need a return statement for a void function
+  std::string returnType = getTypeString(TheFunction->getReturnType());
+  if (returnType == "void" && !isa<ReturnInst>(RetVal)) {
+    Builder.CreateRetVoid();
+  }
+
+  // Verify and finalize the function
+  verifyFunction(*TheFunction);
+  NamedValuesList.pop_back();
+
+  return TheFunction;
+}
+
+Function* BlockASTnode::codegen() {
+  // For local declarations, add allocas to the current basic block
+  for (const auto& decl : localDecls) {
+    if (!decl->codegen())
+      return nullptr;
+  }
+
+  // Generate code for each statement in the block
+  bool returnSet = false;
+  for (const auto& stmt : stmtList) {
+    if (returnSet) 
+      break;
+
+    Value* StmtVal = stmt->codegen();
+    if (!StmtVal)
+      return nullptr;
+
+    // If the statement is a return, mark that we've set the return
+    if (isa<ReturnInst>(StmtVal)) {
+      returnSet = true;
+    }
+  }
+
+  // Return the last evaluated statement value
+  return llvm::cast<Function>(Builder.GetInsertBlock()->getParent());
+}
+
+Value* rootASTnode::codegen() {
+  for (int i = 0; i<TopNodes.size(); i++){
+    TopNodes[i]->codegen();
+  }
+  return nullptr;
 }
 
 
