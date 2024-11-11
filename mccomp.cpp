@@ -2239,55 +2239,261 @@ Value* UnaryExprASTnode::codegen() {
 }
 
 
+// Value* BinaryExprASTnode::codegen() {
+//   Value* lhs = loadValue(LHS->codegen());
+//   if (!lhs) return nullptr;
+
+//   if (Opcode == "&&" && lhs == ConstantInt::get(TheContext, APInt(1, false)))
+//     return ConstantInt::get(TheContext, APInt(1, false));
+//   if (Opcode == "||" && lhs == ConstantInt::get(TheContext, APInt(1, true)))
+//     return ConstantInt::get(TheContext, APInt(1, true));
+
+//   Value* rhs = loadValue(RHS->codegen());
+//   if (!rhs) return nullptr;
+
+//   int lhsType = getOperandType(lhs);
+//   int rhsType = getOperandType(rhs);
+//   lhs = performWideningConversion(lhs, lhsType, rhsType);
+//   rhs = performWideningConversion(rhs, rhsType, lhsType);
+
+//   if (Opcode == "+")
+//     return lhs->getType()->isFloatTy() ? Builder.CreateFAdd(lhs, rhs, "fadd_tmp") : Builder.CreateAdd(lhs, rhs, "add_tmp");
+//   else if (Opcode == "-")
+//     return lhs->getType()->isFloatTy() ? Builder.CreateFSub(lhs, rhs, "fsub_tmp") : Builder.CreateSub(lhs, rhs, "sub_tmp");
+//   else if (Opcode == "*")
+//     return lhs->getType()->isFloatTy() ? Builder.CreateFMul(lhs, rhs, "fmul_tmp") : Builder.CreateMul(lhs, rhs, "mul_tmp");
+//   else if (Opcode == "/") {
+//     if (rhs == ConstantInt::get(TheContext, APInt(32, 0)) || rhs == ConstantFP::get(TheContext, APFloat(0.0f))) {
+//       errs() << "Semantic error: Division by zero.\n";
+//       return nullptr;
+//     }
+//     return lhs->getType()->isFloatTy() ? Builder.CreateFDiv(lhs, rhs, "fdiv_tmp") : Builder.CreateSDiv(lhs, rhs, "div_tmp");
+//   }
+
+//   return nullptr;
+// }
+// Value* BinaryExprASTnode::codegen() {
+//   // Generate and load the left-hand side
+//   Value* lhs = loadValue(LHS->codegen());
+//   if (!lhs) return nullptr;
+
+//   // Short-circuiting for logical AND (&&) and OR (||) operations
+//   if (Opcode == "&&") {
+//     if (lhs == ConstantInt::get(TheContext, APInt(1, false))) // Short-circuit for `false &&`
+//       return ConstantInt::get(TheContext, APInt(1, false));
+//     // Create a block to evaluate `rhs` only if `lhs` is true
+//     BasicBlock *rhsBlock = BasicBlock::Create(TheContext, "and_rhs", Builder.GetInsertBlock()->getParent());
+//     BasicBlock *endBlock = BasicBlock::Create(TheContext, "and_end", Builder.GetInsertBlock()->getParent());
+//     Builder.CreateCondBr(lhs, rhsBlock, endBlock);
+//     Builder.SetInsertPoint(rhsBlock);
+//     Value* rhs = loadValue(RHS->codegen());
+//     if (!rhs) return nullptr;
+//     Builder.CreateBr(endBlock);
+//     Builder.SetInsertPoint(endBlock);
+//     PHINode *phiNode = Builder.CreatePHI(Type::getInt1Ty(TheContext), 2, "and_tmp");
+//     phiNode->addIncoming(lhs, Builder.GetInsertBlock());
+//     phiNode->addIncoming(rhs, rhsBlock);
+//     return phiNode;
+//   } else if (Opcode == "||") {
+//     if (lhs == ConstantInt::get(TheContext, APInt(1, true))) // Short-circuit for `true ||`
+//       return ConstantInt::get(TheContext, APInt(1, true));
+//     // Create a block to evaluate `rhs` only if `lhs` is false
+//     BasicBlock *rhsBlock = BasicBlock::Create(TheContext, "or_rhs", Builder.GetInsertBlock()->getParent());
+//     BasicBlock *endBlock = BasicBlock::Create(TheContext, "or_end", Builder.GetInsertBlock()->getParent());
+//     Builder.CreateCondBr(lhs, endBlock, rhsBlock);
+//     Builder.SetInsertPoint(rhsBlock);
+//     Value* rhs = loadValue(RHS->codegen());
+//     if (!rhs) return nullptr;
+//     Builder.CreateBr(endBlock);
+//     Builder.SetInsertPoint(endBlock);
+//     PHINode *phiNode = Builder.CreatePHI(Type::getInt1Ty(TheContext), 2, "or_tmp");
+//     phiNode->addIncoming(lhs, Builder.GetInsertBlock());
+//     phiNode->addIncoming(rhs, rhsBlock);
+//     return phiNode;
+//   }
+
+//   // Generate and load the right-hand side
+//   Value* rhs = loadValue(RHS->codegen());
+//   if (!rhs) return nullptr;
+
+//   // Type conversion to ensure compatibility
+//   int lhsType = getOperandType(lhs);
+//   int rhsType = getOperandType(rhs);
+//   lhs = performWideningConversion(lhs, lhsType, rhsType);
+//   rhs = performWideningConversion(rhs, rhsType, lhsType);
+
+//   // Arithmetic and comparison operations
+//   if (Opcode == "+")
+//     return lhs->getType()->isFloatTy() ? Builder.CreateFAdd(lhs, rhs, "fadd_tmp") : Builder.CreateAdd(lhs, rhs, "add_tmp");
+//   else if (Opcode == "-")
+//     return lhs->getType()->isFloatTy() ? Builder.CreateFSub(lhs, rhs, "fsub_tmp") : Builder.CreateSub(lhs, rhs, "sub_tmp");
+//   else if (Opcode == "*")
+//     return lhs->getType()->isFloatTy() ? Builder.CreateFMul(lhs, rhs, "fmul_tmp") : Builder.CreateMul(lhs, rhs, "mul_tmp");
+//   else if (Opcode == "/") {
+//     if (rhs == ConstantInt::get(TheContext, APInt(32, 0)) || rhs == ConstantFP::get(TheContext, APFloat(0.0f))) {
+//       errs() << "Semantic error: Division by zero.\n";
+//       return nullptr;
+//     }
+//     return lhs->getType()->isFloatTy() ? Builder.CreateFDiv(lhs, rhs, "fdiv_tmp") : Builder.CreateSDiv(lhs, rhs, "div_tmp");
+//   }
+
+//   return nullptr; // Unsupported operation
+// }
 Value* BinaryExprASTnode::codegen() {
+  // Generate and load the left-hand side operand
   Value* lhs = loadValue(LHS->codegen());
   if (!lhs) return nullptr;
 
-  if (Opcode == "&&" && lhs == ConstantInt::get(TheContext, APInt(1, false)))
-    return ConstantInt::get(TheContext, APInt(1, false));
-  if (Opcode == "||" && lhs == ConstantInt::get(TheContext, APInt(1, true)))
-    return ConstantInt::get(TheContext, APInt(1, true));
+  // Boolean short-circuiting for logical operators || and &&
+  if (Opcode == "&&") {
+    if (lhs == ConstantInt::get(TheContext, APInt(1, false))) // false && ...
+      return ConstantInt::get(TheContext, APInt(1, false));
+  } else if (Opcode == "||") {
+    if (lhs == ConstantInt::get(TheContext, APInt(1, true))) // true || ...
+      return ConstantInt::get(TheContext, APInt(1, true));
+  }
 
+  // Generate and load the right-hand side operand
   Value* rhs = loadValue(RHS->codegen());
   if (!rhs) return nullptr;
 
+  // Retrieve operand types
   int lhsType = getOperandType(lhs);
   int rhsType = getOperandType(rhs);
+
+  // Widen operands if needed to ensure both are of the same type
   lhs = performWideningConversion(lhs, lhsType, rhsType);
   rhs = performWideningConversion(rhs, rhsType, lhsType);
 
-  if (Opcode == "+")
+  // Handling assignment operator `=`
+  if (Opcode == "=") {
+    // Only proceed if `LHS` is assignable (an `AllocaInst` or `GlobalVariable`)
+    if (auto* AI = dyn_cast<AllocaInst>(LHS->codegen())) {
+      // Perform any necessary type widening on `rhs`
+      if (lhsType < rhsType) {
+        errs() << "Error: Cannot widen from RHS type " << getTypeString(rhs->getType())
+               << " to LHS type " << getTypeString(lhs->getType()) << ".\n";
+        return nullptr;
+      }
+      return Builder.CreateStore(rhs, AI);
+    } else if (auto* GV = dyn_cast<GlobalVariable>(LHS->codegen())) {
+      return Builder.CreateStore(rhs, GV);
+    }
+    errs() << "Error: LHS of assignment must be a variable.\n";
+    return nullptr;
+  }
+
+  // Enforce boolean types for logical operators && and ||
+  if (Opcode == "&&" || Opcode == "||") {
+    if (lhsType != 0 || rhsType != 0) {
+      errs() << "Error: Logical operators && and || require boolean operands.\n";
+      return nullptr;
+    }
+    return (Opcode == "&&") ? Builder.CreateAnd(lhs, rhs, "and_tmp") : Builder.CreateOr(lhs, rhs, "or_tmp");
+  }
+
+  // Arithmetic and comparison operations
+  if (Opcode == "+") {
     return lhs->getType()->isFloatTy() ? Builder.CreateFAdd(lhs, rhs, "fadd_tmp") : Builder.CreateAdd(lhs, rhs, "add_tmp");
-  else if (Opcode == "-")
+  } else if (Opcode == "-") {
     return lhs->getType()->isFloatTy() ? Builder.CreateFSub(lhs, rhs, "fsub_tmp") : Builder.CreateSub(lhs, rhs, "sub_tmp");
-  else if (Opcode == "*")
+  } else if (Opcode == "*") {
     return lhs->getType()->isFloatTy() ? Builder.CreateFMul(lhs, rhs, "fmul_tmp") : Builder.CreateMul(lhs, rhs, "mul_tmp");
-  else if (Opcode == "/") {
+  } else if (Opcode == "/") {
     if (rhs == ConstantInt::get(TheContext, APInt(32, 0)) || rhs == ConstantFP::get(TheContext, APFloat(0.0f))) {
-      errs() << "Semantic error: Division by zero.\n";
+      errs() << "Error: Division by zero.\n";
       return nullptr;
     }
     return lhs->getType()->isFloatTy() ? Builder.CreateFDiv(lhs, rhs, "fdiv_tmp") : Builder.CreateSDiv(lhs, rhs, "div_tmp");
+  } else if (Opcode == "%") {
+    if (rhs == ConstantInt::get(TheContext, APInt(32, 0))) {
+      errs() << "Error: Modulo by zero.\n";
+      return nullptr;
+    }
+    return lhs->getType()->isFloatTy() ? Builder.CreateFRem(lhs, rhs, "fmod_tmp") : Builder.CreateSRem(lhs, rhs, "mod_tmp");
+  } else if (Opcode == "==") {
+    return lhs->getType()->isFloatTy() ? Builder.CreateFCmpOEQ(lhs, rhs, "feq_tmp") : Builder.CreateICmpEQ(lhs, rhs, "eq_tmp");
+  } else if (Opcode == "!=") {
+    return lhs->getType()->isFloatTy() ? Builder.CreateFCmpONE(lhs, rhs, "fne_tmp") : Builder.CreateICmpNE(lhs, rhs, "ne_tmp");
+  } else if (Opcode == "<") {
+    return lhs->getType()->isFloatTy() ? Builder.CreateFCmpOLT(lhs, rhs, "flt_tmp") : Builder.CreateICmpSLT(lhs, rhs, "lt_tmp");
+  } else if (Opcode == "<=") {
+    return lhs->getType()->isFloatTy() ? Builder.CreateFCmpOLE(lhs, rhs, "fle_tmp") : Builder.CreateICmpSLE(lhs, rhs, "le_tmp");
+  } else if (Opcode == ">") {
+    return lhs->getType()->isFloatTy() ? Builder.CreateFCmpOGT(lhs, rhs, "fgt_tmp") : Builder.CreateICmpSGT(lhs, rhs, "gt_tmp");
+  } else if (Opcode == ">=") {
+    return lhs->getType()->isFloatTy() ? Builder.CreateFCmpOGE(lhs, rhs, "fge_tmp") : Builder.CreateICmpSGE(lhs, rhs, "ge_tmp");
   }
 
+  // Unsupported operator error
+  errs() << "Error: Unsupported binary operator '" << Opcode << "'.\n";
   return nullptr;
 }
+
+
+
+// Value* CallExprAST::codegen() {
+//   // Look up the function in the module.
+//   Function *CalleeF = TheModule->getFunction(Callee);
+//   if (!CalleeF) {
+//     // errs() << "Semantic error: Unknown function " << Callee << " referenced at line no. "
+//     //        << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
+//     errs() << "Semantic error: Unknown function " << Callee;
+//     return nullptr;
+//   }
+
+//   // Check if the number of arguments matches.
+//   if (CalleeF->arg_size() != Args.size()) {
+//     // errs() << "Semantic error: Incorrect number of arguments for function " << Callee
+//     //        << " at line no. " << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
+//         errs() << "Semantic error: Incorrect number of arguments for function " << Callee;
+//     return nullptr;
+//   }
+
+//   std::vector<Value *> ArgsV;
+//   for (unsigned i = 0, e = Args.size(); i != e; ++i) {
+//     Value* arg = loadValue(Args[i]->codegen());
+//     if (!arg) return nullptr;
+
+//     int argType = getOperandType(arg);
+//     Type* expectedType = CalleeF->getArg(i)->getType();
+//     int expectedTypeInt = getOperandType(CalleeF->getArg(i));
+
+//     // Perform widening conversion if necessary.
+//     if (argType != expectedTypeInt) {
+//       arg = performWideningConversion(arg, argType, expectedTypeInt);
+//       if (!arg) {
+//         errs() << "Semantic error: Cannot cast from `" << getTypeString(arg->getType())
+//                << "` to `" << getTypeString(expectedType) << "` at line no. ";
+//               //  << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
+//         return nullptr;
+//       }
+//     }
+
+//     ArgsV.push_back(arg);
+//   }
+
+//   // Create the function call.
+//   if (CalleeF->getReturnType()->isVoidTy()) {
+//     return Builder.CreateCall(CalleeF, ArgsV);
+//   } else {
+//     return Builder.CreateCall(CalleeF, ArgsV, "call_tmp");
+//   }
+// }
+
+
 
 Value* CallExprAST::codegen() {
   // Look up the function in the module.
   Function *CalleeF = TheModule->getFunction(Callee);
   if (!CalleeF) {
-    // errs() << "Semantic error: Unknown function " << Callee << " referenced at line no. "
-    //        << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
-    errs() << "Semantic error: Unknown function " << Callee;
+    errs() << "Semantic error: Unknown function " << Callee << "\n";
     return nullptr;
   }
 
   // Check if the number of arguments matches.
   if (CalleeF->arg_size() != Args.size()) {
-    // errs() << "Semantic error: Incorrect number of arguments for function " << Callee
-    //        << " at line no. " << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
-        errs() << "Semantic error: Incorrect number of arguments for function " << Callee;
+    errs() << "Semantic error: Incorrect number of arguments for function " << Callee << "\n";
     return nullptr;
   }
 
@@ -2305,8 +2511,7 @@ Value* CallExprAST::codegen() {
       arg = performWideningConversion(arg, argType, expectedTypeInt);
       if (!arg) {
         errs() << "Semantic error: Cannot cast from `" << getTypeString(arg->getType())
-               << "` to `" << getTypeString(expectedType) << "` at line no. ";
-              //  << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
+               << "` to `" << getTypeString(expectedType) << "`\n";
         return nullptr;
       }
     }
@@ -2316,292 +2521,13 @@ Value* CallExprAST::codegen() {
 
   // Create the function call.
   if (CalleeF->getReturnType()->isVoidTy()) {
-    return Builder.CreateCall(CalleeF, ArgsV);
+    Builder.CreateCall(CalleeF, ArgsV);
+    return nullptr; // No value for void-returning function
   } else {
     return Builder.CreateCall(CalleeF, ArgsV, "call_tmp");
   }
 }
-// Value* IfExprAST::codegen() {
-//   // Check if else block exists
-//   bool elseExists = (Else != nullptr);
 
-//   // Get the parent function
-//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
-
-//   // Create necessary basic blocks and associate them with the function
-//   BasicBlock* trueBlock = BasicBlock::Create(TheContext, "if_then", TheFunction);
-//   BasicBlock* falseBlock = elseExists ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
-//   BasicBlock* endBlock = BasicBlock::Create(TheContext, "if_end", TheFunction);
-
-//   // Generate the condition expression
-//   Value* cond = Cond->codegen();
-//   if (!cond)
-//     return nullptr;
-
-//   // Ensure the condition is a boolean type
-//   if (!cond->getType()->isIntegerTy(1)) {
-//     errs() << "Error: Condition of if statement must be of boolean type.\n";
-//     return nullptr;
-//   }
-
-//   // Create a comparison for the boolean condition
-//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "if_cond");
-
-//   // Create the conditional branch
-//   if (elseExists)
-//     Builder.CreateCondBr(comp, trueBlock, falseBlock);
-//   else
-//     Builder.CreateCondBr(comp, trueBlock, endBlock);
-
-//   // Generate code for the 'then' block
-//   Builder.SetInsertPoint(trueBlock);
-//   std::map<std::string, AllocaInst*> NamedValues_Then;
-//   NamedValuesList.push_back(NamedValues_Then);
-
-//   Value* thenVal = Then->codegen();
-//   if (!thenVal)
-//     return nullptr;
-
-//   // Branch to end block if no return statement was encountered
-//   if (!isa<ReturnInst>(thenVal)) {
-//     Builder.CreateBr(endBlock);
-//   }
-//   NamedValuesList.pop_back();
-
-//   // Generate code for the 'else' block if it exists
-//   if (elseExists) {
-//     Builder.SetInsertPoint(falseBlock);
-//     std::map<std::string, AllocaInst*> NamedValues_Else;
-//     NamedValuesList.push_back(NamedValues_Else);
-
-//     Value* elseVal = Else->codegen();
-//     if (!elseVal)
-//       return nullptr;
-
-//     if (!isa<ReturnInst>(elseVal)) {
-//       Builder.CreateBr(endBlock);
-//     }
-//     NamedValuesList.pop_back();
-//   }
-
-//   // Set the insertion point to the end block
-//   Builder.SetInsertPoint(endBlock);
-
-//   // Return a null value for void functions
-//   if (TheFunction->getReturnType()->isVoidTy()) {
-//     return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
-//   }
-
-//   // Return an undefined value for other return types
-//   return UndefValue::get(TheFunction->getReturnType());
-// }
-
-// Value* IfExprAST::codegen() {
-//   bool elseExist;
-//   if (Else == nullptr){
-//     elseExist = false;
-//   }else{
-//     elseExist = true;
-//   }
-  
-//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
-//   BasicBlock* true_ = BasicBlock::Create(TheContext, "if_then", TheFunction);
-//   BasicBlock* false_ = elseExist ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
-//   BasicBlock* end_ = BasicBlock::Create(TheContext, "if_end");
-
-//   Value* cond = loadValue(Cond->codegen());
-//   if (!cond) return nullptr;
-
-//   int condType = getOperandType(cond);
-//   if (condType != 0) { // Check if condition is a bool
-//     errs() << "Semantic error: Expected type `bool` for the condition statement at line no. ";
-//           //  << Cond->getTok().lineNo << " column no. " << Cond->getTok().columnNo << ".\n";
-//     return nullptr;
-//   }
-
-//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0, false)), "if_cond");
-//   Builder.CreateCondBr(comp, true_, elseExist ? false_ : end_);
-//   Builder.SetInsertPoint(true_);
-
-//   // Generate 'then' block.
-//   stmt =
-//   if (!Then->codegen()) return nullptr;
-  
-//   Builder.CreateBr(end_);
-
-//   // Generate 'else' block if it exists.
-//   if (elseExist) {
-//     TheFunction->getBasicBlockList().push_back(false_);
-//     Builder.SetInsertPoint(false_);
-//     for (auto& stmt : Else) {
-//       if (!stmt->codegen()) return nullptr;
-//     }
-//     Builder.CreateBr(end_);
-//   }
-
-//   TheFunction->getBasicBlockList().push_back(end_);
-//   Builder.SetInsertPoint(end_);
-//   return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
-// }
-// Value* IfExprAST::codegen() {
-//   // Check if else block exists
-//   bool elseExist = (Else != nullptr);
-
-//   // Create necessary basic blocks
-//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
-//   BasicBlock* true_ = BasicBlock::Create(TheContext, "if_then", TheFunction);
-//   BasicBlock* false_ = elseExist ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
-//   BasicBlock* end_ = BasicBlock::Create(TheContext, "if_end");
-
-//   // Generate condition expression
-//   Value* cond = Cond->codegen();
-//   if (!cond)
-//     return nullptr;
-
-//   // Ensure the condition is of boolean type
-//   cond = loadValue(cond);
-//   std::string currType = getTypeString(cond->getType());
-//   if (currType != "bool") {
-//     errs() << "Semantic error: Expected type `bool` for the condition statement at line no. ";
-//           //  << Cond->getTok().lineNo << " column no. " << Cond->getTok().columnNo
-//           //  << ". Cannot cast from type `" << currType << "` to `bool`.\n";
-//     return nullptr;
-//   }
-
-//   // Create comparison for boolean condition
-//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0, false)), "if_cond");
-
-//   // Create conditional branch
-//   if (elseExist)
-//     Builder.CreateCondBr(comp, true_, false_);
-//   else
-//     Builder.CreateCondBr(comp, true_, end_);
-
-//   // Generate `if_then` block
-//   Builder.SetInsertPoint(true_);
-//   std::map<std::string, AllocaInst*> NamedValues_Then;
-//   NamedValuesList.push_back(NamedValues_Then);
-
-//   bool generateBranchForThen = true;
-//   Value* ret = nullptr;
-
-//   for (auto& stmt : Then) {
-//     Value* thenVal = stmt->codegen();
-//     if (!thenVal)
-//       return nullptr;
-//     if (dyn_cast<ReturnInst>(thenVal)) {
-//       ret = thenVal;
-//       generateBranchForThen = false;
-//       break;
-//     }
-//   }
-//   NamedValuesList.pop_back();
-
-//   if (generateBranchForThen)
-//     Builder.CreateBr(end_);
-
-//   // Generate `if_else` block if it exists
-//   if (elseExist) {
-//     Builder.SetInsertPoint(false_);
-//     std::map<std::string, AllocaInst*> NamedValues_Else;
-//     NamedValuesList.push_back(NamedValues_Else);
-
-//     Value* elseVal = Else->codegen();
-//     if (!elseVal)
-//       return nullptr;
-//     if (dyn_cast<ReturnInst>(elseVal)) {
-//       ret = elseVal;
-//       generateBranchForThen = false;
-//     } else {
-//       Builder.CreateBr(end_);
-//     }
-
-//     NamedValuesList.pop_back();
-//   }
-
-//   // Generate `if_end` block
-//   if (generateBranchForThen) {
-//     TheFunction->insert(TheFunction->end(), end_);
-//     Builder.SetInsertPoint(end_);
-//     return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
-//   } else {
-//     return ret;
-//   }
-// }
-// Value* IfExprAST::codegen() {
-//   // Check if else block exists
-//   bool elseExists = (Else != nullptr);
-
-//   // Get the parent function
-//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
-
-//   // Create necessary basic blocks
-//   BasicBlock* trueBlock = BasicBlock::Create(TheContext, "if_then", TheFunction);
-//   BasicBlock* falseBlock = elseExists ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
-//   BasicBlock* endBlock = BasicBlock::Create(TheContext, "if_end", TheFunction);
-
-//   // Generate the condition expression
-//   Value* cond = Cond->codegen();
-//   if (!cond)
-//     return nullptr;
-
-//   // Ensure the condition is a boolean type
-//   if (!cond->getType()->isIntegerTy(1)) {
-//     errs() << "Error: Condition of if statement must be of boolean type.\n";
-//     return nullptr;
-//   }
-
-//   // Create a comparison for the boolean condition
-//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "if_cond");
-
-//   // Create the conditional branch
-//   if (elseExists)
-//     Builder.CreateCondBr(comp, trueBlock, falseBlock);
-//   else
-//     Builder.CreateCondBr(comp, trueBlock, endBlock);
-
-//   // Generate code for the 'then' block
-//   Builder.SetInsertPoint(trueBlock);
-//   std::map<std::string, AllocaInst*> NamedValues_Then;
-//   NamedValuesList.push_back(NamedValues_Then);
-
-//   Value* thenVal = Then->codegen();
-//   if (!thenVal)
-//     return nullptr;
-
-//   // Branch to end block if no return statement was encountered
-//   if (!thenVal->getType()->isVoidTy()) {
-//     Builder.CreateBr(endBlock);
-//   }
-//   NamedValuesList.pop_back();
-
-//   // Generate code for the 'else' block if it exists
-//   if (elseExists) {
-//     Builder.SetInsertPoint(falseBlock);
-//     std::map<std::string, AllocaInst*> NamedValues_Else;
-//     NamedValuesList.push_back(NamedValues_Else);
-
-//     Value* elseVal = Else->codegen();
-//     if (!elseVal)
-//       return nullptr;
-
-//     if (!elseVal->getType()->isVoidTy()) {
-//       Builder.CreateBr(endBlock);
-//     }
-//     NamedValuesList.pop_back();
-//   }
-
-//   // Set the insertion point to the end block and finalize it
-//   TheFunction->getBasicBlockList().push_back(endBlock);
-//   Builder.SetInsertPoint(endBlock);
-
-//   // Return a null value for void functions
-//   if (TheFunction->getReturnType()->isVoidTy())
-//     return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
-  
-//   // Otherwise, return the result of the block (could be a phi node if merging values)
-//   return UndefValue::get(TheFunction->getReturnType());
-// }
 Value* IfExprAST::codegen() {
   // Check if else block exists
   bool elseExists = (Else != nullptr);
@@ -2616,8 +2542,10 @@ Value* IfExprAST::codegen() {
 
   // Generate the condition expression
   Value* cond = Cond->codegen();
-  if (!cond)
+  if (!cond) {
+    errs() << "Error: Condition of if statement could not be generated.\n";
     return nullptr;
+  }
 
   // Load the condition value if necessary
   cond = loadValue(cond);
@@ -2681,6 +2609,85 @@ Value* IfExprAST::codegen() {
 }
 
 
+// Value* IfExprAST::codegen() {
+//   // Check if else block exists
+//   bool elseExists = (Else != nullptr);
+
+//   // Get the parent function
+//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
+
+//   // Create necessary basic blocks and associate them with the function
+//   BasicBlock* trueBlock = BasicBlock::Create(TheContext, "if_then", TheFunction);
+//   BasicBlock* falseBlock = elseExists ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
+//   BasicBlock* endBlock = BasicBlock::Create(TheContext, "if_end", TheFunction);
+
+//   // Generate the condition expression
+//   Value* cond = Cond->codegen();
+//   if (!cond)
+//     return nullptr;
+
+//   // Load the condition value if necessary
+//   cond = loadValue(cond);
+
+//   // Ensure the condition is a boolean type
+//   if (!cond->getType()->isIntegerTy(1)) {
+//     errs() << "Error: Condition of if statement must be of boolean type.\n";
+//     return nullptr;
+//   }
+
+//   // Create a comparison for the boolean condition
+//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "if_cond");
+
+//   // Create the conditional branch
+//   if (elseExists)
+//     Builder.CreateCondBr(comp, trueBlock, falseBlock);
+//   else
+//     Builder.CreateCondBr(comp, trueBlock, endBlock);
+
+//   // Generate code for the 'then' block
+//   Builder.SetInsertPoint(trueBlock);
+//   std::map<std::string, AllocaInst*> NamedValues_Then;
+//   NamedValuesList.push_back(NamedValues_Then);
+
+//   Value* thenVal = Then->codegen();
+//   if (!thenVal)
+//     return nullptr;
+
+//   // Branch to end block if no return statement was encountered
+//   if (!isa<ReturnInst>(thenVal)) {
+//     Builder.CreateBr(endBlock);
+//   }
+//   NamedValuesList.pop_back();
+
+//   // Generate code for the 'else' block if it exists
+//   if (elseExists) {
+//     Builder.SetInsertPoint(falseBlock);
+//     std::map<std::string, AllocaInst*> NamedValues_Else;
+//     NamedValuesList.push_back(NamedValues_Else);
+
+//     Value* elseVal = Else->codegen();
+//     if (!elseVal)
+//       return nullptr;
+
+//     if (!isa<ReturnInst>(elseVal)) {
+//       Builder.CreateBr(endBlock);
+//     }
+//     NamedValuesList.pop_back();
+//   }
+
+//   // Set the insertion point to the end block
+//   Builder.SetInsertPoint(endBlock);
+
+//   // Return nullptr for void functions
+//   if (TheFunction->getReturnType()->isVoidTy()) {
+//     return nullptr;
+//   }
+
+//   // Return an undefined value for other return types
+//   return UndefValue::get(TheFunction->getReturnType());
+// }
+
+
 
 Value* WhileExprAST::codegen() {
   Function* TheFunction = Builder.GetInsertBlock()->getParent();
@@ -2735,60 +2742,6 @@ Value* WhileExprAST::codegen() {
   Builder.SetInsertPoint(end_);
   return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
 }
-// Value* WhileExprAST::codegen() {
-//   // Get the parent function
-//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
-
-//   // Create basic blocks for the loop
-//   BasicBlock* condBlock = BasicBlock::Create(TheContext, "while_cond", TheFunction);
-//   BasicBlock* bodyBlock = BasicBlock::Create(TheContext, "while_body", TheFunction);
-//   BasicBlock* endBlock = BasicBlock::Create(TheContext, "while_end");
-
-//   // Jump to the condition block
-//   Builder.CreateBr(condBlock);
-//   Builder.SetInsertPoint(condBlock);
-
-//   // Generate the condition expression
-//   Value* cond = Cond->codegen();
-//   if (!cond)
-//     return nullptr;
-
-//   // Ensure the condition is of boolean type
-//   if (!cond->getType()->isIntegerTy(1)) {
-//     errs() << "Semantic error: Expected type `bool` for the condition statement.\n";
-//     return nullptr;
-//   }
-
-//   // Create comparison for the boolean condition
-//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "while_cond");
-
-//   // Create conditional branch based on the comparison
-//   Builder.CreateCondBr(comp, bodyBlock, endBlock);
-
-//   // Generate code for the loop body
-//   Builder.SetInsertPoint(bodyBlock);
-//   std::map<std::string, AllocaInst*> NamedValues_Body;
-//   NamedValuesList.push_back(NamedValues_Body);
-
-//   // Generate the body code
-//   Value* bodyVal = Then->codegen();
-//   if (!bodyVal)
-//     return nullptr;
-
-//   // Branch back to the condition block to continue the loop
-//   Builder.CreateBr(condBlock);
-//   NamedValuesList.pop_back();
-
-//   // Insert the `endBlock` into the function and set the insertion point
-//   TheFunction->getBasicBlockList().push_back(endBlock);
-//   Builder.SetInsertPoint(endBlock);
-
-//   // Return a null value for void functions
-//   return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
-// }
-
-
-
 
 Value* ReturnExprAST::codegen() {
   if (!ReturnExpr)
@@ -2822,61 +2775,6 @@ Value* ReturnExprAST::codegen() {
 
   return Builder.CreateRet(returnExpr);
 }
-
-// Value* PrototypeAST::codegen() {
-//   // Extract return type and function name
-//   std::string ReturnType;
-//   std::string origName = getName();
-//   size_t space_pos = origName.find(" ");
-
-//   if (space_pos != std::string::npos)
-//     ReturnType = origName.substr(0, space_pos);
-
-//   origName = origName.substr(space_pos + 1);
-
-//   if (ReturnType == "extern") {
-//     size_t space_pos_2 = origName.find(" ");
-//     if (space_pos_2 != std::string::npos) {
-//       ReturnType = origName.substr(0, space_pos_2);
-//       origName = origName.substr(space_pos_2 + 1);
-//     }
-//   }
-
-//   std::vector<llvm::Type*> ArgTypes;
-//   for (auto& Arg : Args) {
-//     std::string ArgType = Arg->getType();
-//     if (ArgType == "int")
-//       ArgTypes.push_back(llvm::Type::getInt32Ty(TheContext));
-//     else if (ArgType == "float")
-//       ArgTypes.push_back(llvm::Type::getFloatTy(TheContext));
-//     else if (ArgType == "bool")
-//       ArgTypes.push_back(llvm::Type::getInt1Ty(TheContext));
-//   }
-
-//   llvm::Type* RetType = nullptr;
-//   if (ReturnType == "int")
-//     RetType = llvm::Type::getInt32Ty(TheContext);
-//   else if (ReturnType == "float")
-//     RetType = llvm::Type::getFloatTy(TheContext);
-//   else if (ReturnType == "bool")
-//     RetType = llvm::Type::getInt1Ty(TheContext);
-//   else if (ReturnType == "void")
-//     RetType = llvm::Type::getVoidTy(TheContext);
-
-//   if (!RetType)
-//     return nullptr;
-
-//   llvm::FunctionType* FT = llvm::FunctionType::get(RetType, ArgTypes, false);
-//   llvm::Function* F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, origName, TheModule.get());
-
-//   // Set names for all arguments
-//   unsigned Idx = 0;
-//   for (auto& Arg : F->args()) {
-//     Arg.setName(getName(Idx++));
-//   }
-
-//   return F;
-// }
 
 Value* GlobalVariableASTnode::codegen() {
   std::string ty = getType();
@@ -2961,63 +2859,6 @@ Function* PrototypeAST::codegen() {
   return F;
 }
 
-// Function* FunctionAST::codegen() {
-//   Function* TheFunction = TheModule->getFunction(Proto->getName());
-
-//   if (!TheFunction)
-//     TheFunction = Proto->codegen();
-//   if (!TheFunction)
-//     return nullptr;
-
-//   BasicBlock* BB = BasicBlock::Create(TheContext, "entry", TheFunction);
-//   Builder.SetInsertPoint(BB);
-
-//   std::map<std::string, AllocaInst*> NamedValues;
-
-//   // Register function arguments in the symbol table
-//   for (auto& Arg : TheFunction->args()) {
-//     std::string type = getTypeString(Arg.getType());
-//     AllocaInst* Alloca = CreateEntryBlockAlloca(TheFunction, Arg.getName().str(), type);
-//     Builder.CreateStore(&Arg, Alloca);
-//     NamedValues[Arg.getName().str()] = Alloca;
-//   }
-
-//   NamedValuesList.push_back(NamedValues);
-
-//   std::string returnType = getTypeString(TheFunction->getReturnType());
-//   bool returnSet = false;
-
-//   // Check if Body is empty, which is an error if the function has a non-void return type
-//   if (!Body && returnType != "void") {
-//     errs() << "Semantic Error: Return statement of type " << returnType
-//            << " expected in function " << Proto->getName() << ".\n";
-//     return nullptr;
-//   }
-
-//   // Generate code for the single Body node
-//   Value* RetVal = Body ? Body->codegen() : nullptr;
-//   if (!RetVal) {
-//     return nullptr;
-//   }
-
-//   // Check if the function return type is void and create a return statement accordingly
-//   if (isa<ReturnInst>(RetVal)) {
-//     returnSet = true;
-//   } else if (returnType == "void") {
-//     Builder.CreateRetVoid();
-//     returnSet = true;
-//   } else {
-//     errs() << "Semantic Error: Return statement of type " << returnType
-//            << " expected in function " << Proto->getName() << ".\n";
-//     return nullptr;
-//   }
-
-//   verifyFunction(*TheFunction);
-//   NamedValuesList.pop_back();
-
-//   return TheFunction;
-// }
-
 Function* FunctionAST::codegen() {
   // Retrieve or create the function definition from the prototype
   Function* TheFunction = TheModule->getFunction(Proto->getName());
@@ -3033,13 +2874,6 @@ Function* FunctionAST::codegen() {
   // Symbol table for named values in this function scope
   std::map<std::string, AllocaInst*> NamedValues;
 
-  // Register function arguments in the symbol table
-  // for (auto& Arg : TheFunction->args()) {
-  //   std::string type = getTypeString(Arg.getType());
-  //   AllocaInst* Alloca = CreateEntryBlockAlloca(TheFunction, Arg.getName().str(), type);
-  //   Builder.CreateStore(&Arg, Alloca);
-  //   NamedValues[Arg.getName().str()] = Alloca;
-  // }
   for (auto& Arg : TheFunction->args()) {
     std::string type = getTypeString(Arg.getType());
     std::string varName = Arg.getName().str(); // Create a named std::string
