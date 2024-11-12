@@ -398,52 +398,24 @@ static void clearTokBuffer() {  //clear the buffer at the end
 
 static int indentDepth = 0;
 
-
-// void dedent(){
-//   indentDepth = (indentDepth > 0) ? indentDepth = indentDepth - indentDepth : indentDepth;
-// }
 void dedent() {
   if (indentDepth >= 4) indentDepth -= 4;
 }
 
 
-// std::string indent() {
-//   indentDepth = indentDepth + 2;
-//   std::string out = "";
-//   for (int i= 0; i < indentDepth; i++) {
-//     out.append(" ");
-//   }
-//   return out;
-// }
-// std::string indent() {
-//   indentDepth += 4;
-//   return std::string(indentDepth, ' ');
-// }
 std::string indent()
 {
-  indentDepth += 4;
-  std::string out = "";
-    for(int i = 0; i < indentDepth; i++)
-      if(i % 2 == 0)
-        out.append("|");
-      else
-      {
-        if(i == indentDepth - 1)
-          out.append("-");
-        else
-          out.append(" ");
-      }
-  // else
-    // out = std::string(indentLevel,' ');
-  return out;
+    indentDepth += 4;
+    std::string out;
+
+    // Loop through each level of indentation
+    for (int i = 0; i < indentDepth - 4; i += 4) {
+        out.append("│   "); // Adds a vertical line character for previous levels
+    }
+    
+    out.append("├──"); // Adds a branch character for the current level
+    return out;
 }
-
-std::string startIndent(){
-  return std::string(indentDepth, ' ');
-}
-
-
-
 
 
 
@@ -509,6 +481,9 @@ public:
 
 };
 
+
+
+
 class BoolASTnode : public ASTnode {
   bool Val;
   std::string Name;
@@ -518,6 +493,19 @@ public:
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string out = "BoolLiteral: " + std::to_string(Val);
+    dedent();
+    return out;
+  };
+
+};
+
+class CommaASTnode : public ASTnode {
+
+public:
+  CommaASTnode() {};
+  virtual Value *codegen() override {return nullptr;}
+  virtual std::string to_string() const override {
+    std::string out = "Empty Expression: ;";
     dedent();
     return out;
   };
@@ -1467,7 +1455,7 @@ std::unique_ptr<ASTnode> expr_stmt() {
       errorReported = true;
       return nullptr;
     }
-    return std::make_unique<VariableRefASTnode>("comma");
+    return std::make_unique<CommaASTnode>();
   }
 }
 
@@ -2144,6 +2132,7 @@ Value *BoolASTnode::codegen() {
 }
 
 Value *VariableRefASTnode::codegen() {
+
   AllocaInst *V;
 
   std::map<std::string, AllocaInst*> NamedValues;
@@ -2161,6 +2150,7 @@ Value *VariableRefASTnode::codegen() {
     }
 
   }
+
   
   GlobalVariable *GV = GlobalVariables[Name];
   if(!GV)
