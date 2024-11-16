@@ -408,12 +408,11 @@ std::string indent()
     indentDepth += 4;
     std::string out;
 
-    // Loop through each level of indentation
     for (int i = 0; i < indentDepth - 4; i += 4) {
-        out.append("│   "); // Adds a vertical line character for previous levels
+        out.append("│   "); 
     }
     
-    out.append("├──"); // Adds a branch character for the current level
+    out.append("├──");
     return out;
 }
 
@@ -426,8 +425,7 @@ public:
   virtual Value *codegen() = 0;
   virtual std::string to_string() const {return "";};
 };
-// Recursive Descent Parser - Function call for each production
-/// IntASTnode - Class for integer literals like 1, 2, 10,
+
 
 
 class rootASTnode : public ASTnode {
@@ -447,9 +445,6 @@ public:
 };
 
 
-
-
-
 class IntASTnode : public ASTnode {
   int Val;
 
@@ -464,7 +459,6 @@ public:
   };
 };
 
-/* add other AST nodes as nessasary */
 
 class FloatASTnode : public ASTnode {
   float Val;
@@ -483,7 +477,6 @@ public:
 
 
 
-
 class BoolASTnode : public ASTnode {
   bool Val;
   std::string Name;
@@ -499,10 +492,10 @@ public:
 
 };
 
-class CommaASTnode : public ASTnode {
+class SCASTnode : public ASTnode {
 
 public:
-  CommaASTnode() {};
+  SCASTnode() {};
   virtual Value *codegen() override {return nullptr;}
   virtual std::string to_string() const override {
     std::string out = "Empty Expression: ;";
@@ -651,12 +644,6 @@ public:
   //return a string representation of this AST node
     std::string ThenStr = "";
     std::string out = "WhileExpr:\n" + indent() + Cond->to_string() + "\n" + indent() + "Then: " + Then->to_string();
-    // for(int i = 0; i < Then.size(); i++)
-    // {
-    //   if(Then[i] != nullptr)  
-    //     ThenStr.append("\n" + indent() + "--> " + Then[i]->to_string());
-    // }
-    // out.append(ThenStr);
     dedent();
     return out;
   };
@@ -665,7 +652,7 @@ public:
 
 class ReturnExprAST : public ASTnode {
   std::unique_ptr<ASTnode> ReturnExpr;
-  // std::string Type;
+  std::string Type;
 
 public:
   ReturnExprAST(std::unique_ptr<ASTnode> returnexpr) : ReturnExpr(std::move(returnexpr)) {}
@@ -706,8 +693,6 @@ public:
   } 
   dedent();
   return "FunctionDecl: " +Type + " "+ Name + args;
-  // dedent();
-  // dedent();
   };
   
 };
@@ -729,10 +714,7 @@ public:
 
 };
 
-// A BlockASTnode to represent blocks of code, containing local declarations and a list of statements
 class BlockASTnode : public ASTnode {
-    // std::vector<std::unique_ptr<ASTnode>> localDecls;
-    // std::vector<std::unique_ptr<ASTnode>> stmtList;
     std::vector<std::unique_ptr<ASTnode>> localDecls;
     std::vector<std::unique_ptr<ASTnode>> stmtList;
 public:
@@ -741,10 +723,7 @@ public:
   BlockASTnode(std::vector<std::unique_ptr<ASTnode>> localDecls, std::vector<std::unique_ptr<ASTnode>> stmtList)
       : localDecls(std::move(localDecls)), stmtList(std::move(stmtList)) {}
   virtual Function *codegen() override;
-
-  // Override virtual methods from ASTnode as needed
   virtual std::string to_string() const override {
-    // Example implementation for debugging
     std::string out = "";
     for (const auto& decl : localDecls) {
       out.append("\n" + indent() + decl->to_string());
@@ -973,7 +952,7 @@ std::unique_ptr<ASTnode> pas_extern() {
   }
 
   auto paramsNode = params();
-  // if (!paramsNode) return nullptr;
+
 
   if (!match(RPAR)) {
     if (!errorReported) {
@@ -1100,8 +1079,7 @@ std::unique_ptr<ASTnode> var_decl() {
   return std::make_unique<GlobalVariableASTnode>(typeNode, identifier);
 }
 
-//COULD CHANGE 
-// to do match void, else push back and match vartype
+
 //type_spec ::= "void" |  var_type     
 std::string type_spec() {
   if (isIn(CurTok.type, first_type_spec)){
@@ -1145,7 +1123,6 @@ std::string var_type() {
 
 //fun_decl ::= type_spec IDENT "(" params ")" block
 std::unique_ptr<ASTnode> fun_decl() {
-  // Parse the type specification
   if (!isIn(CurTok.type, first_type_spec)) {
     if (!errorReported)
       errs() << "Syntax error: Expected an Identifier at line " << CurTok.lineNo << " column " << CurTok.columnNo << ".\n";
@@ -1154,7 +1131,6 @@ std::unique_ptr<ASTnode> fun_decl() {
   }
   auto returnTypeNode = type_spec();
 
-  // Parse the function name (identifier)
   std::string functionName = CurTok.lexeme;
   if (!match(IDENT)) {
     if (!errorReported)
@@ -1163,7 +1139,6 @@ std::unique_ptr<ASTnode> fun_decl() {
     return nullptr;
   }
 
-  // Parse the opening parenthesis
   if (!match(LPAR)) {
     if (!errorReported)
       errs() << "Syntax error: Expected '(' at line " << CurTok.lineNo << " column " << CurTok.columnNo << ".\n";
@@ -1171,10 +1146,10 @@ std::unique_ptr<ASTnode> fun_decl() {
     return nullptr;
   }
 
-  // Parse parameters and collect them in a vector
+
   auto paramsNode = params();
 
-  // Parse the closing parenthesis
+
   if (!match(RPAR)) {
     if (!errorReported)
       errs() << "Syntax error: Expected ')' at line " << CurTok.lineNo << " column " << CurTok.columnNo << ".\n";
@@ -1182,11 +1157,10 @@ std::unique_ptr<ASTnode> fun_decl() {
     return nullptr;
   }
 
-  // Parse the function body (block)
+
   auto bodyNode = block();
   if (!bodyNode) return nullptr;
 
-  // Construct and return the FunctionAST node
   return std::make_unique<FunctionAST>(
     std::make_unique<PrototypeAST>(functionName, std::move(paramsNode),returnTypeNode), 
     std::move(bodyNode)
@@ -1201,13 +1175,11 @@ std::vector<std::unique_ptr<VariableASTnode>> params() {
 
   if (isIn(CurTok.type, first_param_list)) {
     paramList = param_list();
-    // if (paramList.empty()) return nullptr; // Check if param_list failed
     return paramList;
   } else if (match(VOID_TOK)) {
     auto param_void = std::make_unique<VariableASTnode>("void", "void");
     paramList.push_back(std::move(param_void));
     return paramList;
-    // "void" as a special case: function takes no parameters
   } else if (isIn(CurTok.type, Follow_params)) {
     return std::vector<std::unique_ptr<VariableASTnode>>();
   } else {
@@ -1227,15 +1199,14 @@ std::vector<std::unique_ptr<VariableASTnode>> params() {
 std::vector<std::unique_ptr<VariableASTnode>> param_list() {
   std::vector<std::unique_ptr<VariableASTnode>> paramList;
 
-  // Parse the first parameter
+
   auto firstParam = param();
   if (!firstParam) {
-    // Error handling if parsing fails
     return {};
   }
   paramList.push_back(std::move(firstParam));
 
-  // Parse the rest of the parameters
+
   auto additionalParams = param_listI();
   paramList.insert(paramList.end(), std::make_move_iterator(additionalParams.begin()), std::make_move_iterator(additionalParams.end()));
 
@@ -1437,7 +1408,7 @@ std::unique_ptr<ASTnode> stmt() {
 // expr_stmt ::= expr ";" |  ";"
 std::unique_ptr<ASTnode> expr_stmt() {
   if (isIn(CurTok.type, first_expr)) {
-    auto exprNode = expr(); // expr() needs to return an AST node
+    auto exprNode = expr(); 
     if (!exprNode) return nullptr;
 
     if (!match(SC)) {
@@ -1455,7 +1426,7 @@ std::unique_ptr<ASTnode> expr_stmt() {
       errorReported = true;
       return nullptr;
     }
-    return std::make_unique<CommaASTnode>();
+    return std::make_unique<SCASTnode>();
   }
 }
 
@@ -2049,6 +2020,7 @@ static IRBuilder<> Builder(TheContext);
 static std::unique_ptr<Module> TheModule;
 static std::vector<std::map<std::string,AllocaInst*>> NamedValuesList;
 static std::map<std::string,GlobalVariable*> GlobalVariables;
+static std::vector<std::string> NamedFuncs;
 
 // helper functions
 
@@ -2092,12 +2064,12 @@ int getOperandType(Value* val) {
 }
 
 Value* performWideningConversion(Value* val, int fromType, int toType) {
-  if (fromType < toType) { // Widening conversion needed
-    if (toType == 2) { // Convert to float
-      if (fromType == 0) // bool to float
+  if (fromType < toType) {
+    if (toType == 2) { 
+      if (fromType == 0)
         val = Builder.CreateIntCast(val, Type::getInt32Ty(TheContext), false);
       return Builder.CreateCast(Instruction::SIToFP, val, Type::getFloatTy(TheContext), "cast_to_float");
-    } else if (toType == 1) { // Convert to int
+    } else if (toType == 1) {
       return Builder.CreateIntCast(val, Type::getInt32Ty(TheContext), false, "cast_to_int");
     }
   }
@@ -2185,8 +2157,8 @@ Value *VariableASTnode::codegen() {
         //        << ", line no. " << Tok.lineNo << ".\n"
         //        << "Variable " << Val << " of type " << existingType
         //        << " already exists within the current scope.\n";
-        errs() << "Semantic error: Redefinition of variable " << Val
-               << " at column no., line no. .\nVariable"  << Val << " of type " << existingType
+        errs() << "Semantic error: Redefinition of variable. " << Val
+               << "\nVariable"  << Val << " of type " << existingType
                << " already exists within the current scope.\n";
         return nullptr;
     }
@@ -2230,106 +2202,6 @@ Value* UnaryExprASTnode::codegen() {
 }
 
 
-// Value* BinaryExprASTnode::codegen() {
-//   Value* lhs = loadValue(LHS->codegen());
-//   if (!lhs) return nullptr;
-
-//   if (Opcode == "&&" && lhs == ConstantInt::get(TheContext, APInt(1, false)))
-//     return ConstantInt::get(TheContext, APInt(1, false));
-//   if (Opcode == "||" && lhs == ConstantInt::get(TheContext, APInt(1, true)))
-//     return ConstantInt::get(TheContext, APInt(1, true));
-
-//   Value* rhs = loadValue(RHS->codegen());
-//   if (!rhs) return nullptr;
-
-//   int lhsType = getOperandType(lhs);
-//   int rhsType = getOperandType(rhs);
-//   lhs = performWideningConversion(lhs, lhsType, rhsType);
-//   rhs = performWideningConversion(rhs, rhsType, lhsType);
-
-//   if (Opcode == "+")
-//     return lhs->getType()->isFloatTy() ? Builder.CreateFAdd(lhs, rhs, "fadd_tmp") : Builder.CreateAdd(lhs, rhs, "add_tmp");
-//   else if (Opcode == "-")
-//     return lhs->getType()->isFloatTy() ? Builder.CreateFSub(lhs, rhs, "fsub_tmp") : Builder.CreateSub(lhs, rhs, "sub_tmp");
-//   else if (Opcode == "*")
-//     return lhs->getType()->isFloatTy() ? Builder.CreateFMul(lhs, rhs, "fmul_tmp") : Builder.CreateMul(lhs, rhs, "mul_tmp");
-//   else if (Opcode == "/") {
-//     if (rhs == ConstantInt::get(TheContext, APInt(32, 0)) || rhs == ConstantFP::get(TheContext, APFloat(0.0f))) {
-//       errs() << "Semantic error: Division by zero.\n";
-//       return nullptr;
-//     }
-//     return lhs->getType()->isFloatTy() ? Builder.CreateFDiv(lhs, rhs, "fdiv_tmp") : Builder.CreateSDiv(lhs, rhs, "div_tmp");
-//   }
-
-//   return nullptr;
-// }
-// Value* BinaryExprASTnode::codegen() {
-//   // Generate and load the left-hand side
-//   Value* lhs = loadValue(LHS->codegen());
-//   if (!lhs) return nullptr;
-
-//   // Short-circuiting for logical AND (&&) and OR (||) operations
-//   if (Opcode == "&&") {
-//     if (lhs == ConstantInt::get(TheContext, APInt(1, false))) // Short-circuit for `false &&`
-//       return ConstantInt::get(TheContext, APInt(1, false));
-//     // Create a block to evaluate `rhs` only if `lhs` is true
-//     BasicBlock *rhsBlock = BasicBlock::Create(TheContext, "and_rhs", Builder.GetInsertBlock()->getParent());
-//     BasicBlock *endBlock = BasicBlock::Create(TheContext, "and_end", Builder.GetInsertBlock()->getParent());
-//     Builder.CreateCondBr(lhs, rhsBlock, endBlock);
-//     Builder.SetInsertPoint(rhsBlock);
-//     Value* rhs = loadValue(RHS->codegen());
-//     if (!rhs) return nullptr;
-//     Builder.CreateBr(endBlock);
-//     Builder.SetInsertPoint(endBlock);
-//     PHINode *phiNode = Builder.CreatePHI(Type::getInt1Ty(TheContext), 2, "and_tmp");
-//     phiNode->addIncoming(lhs, Builder.GetInsertBlock());
-//     phiNode->addIncoming(rhs, rhsBlock);
-//     return phiNode;
-//   } else if (Opcode == "||") {
-//     if (lhs == ConstantInt::get(TheContext, APInt(1, true))) // Short-circuit for `true ||`
-//       return ConstantInt::get(TheContext, APInt(1, true));
-//     // Create a block to evaluate `rhs` only if `lhs` is false
-//     BasicBlock *rhsBlock = BasicBlock::Create(TheContext, "or_rhs", Builder.GetInsertBlock()->getParent());
-//     BasicBlock *endBlock = BasicBlock::Create(TheContext, "or_end", Builder.GetInsertBlock()->getParent());
-//     Builder.CreateCondBr(lhs, endBlock, rhsBlock);
-//     Builder.SetInsertPoint(rhsBlock);
-//     Value* rhs = loadValue(RHS->codegen());
-//     if (!rhs) return nullptr;
-//     Builder.CreateBr(endBlock);
-//     Builder.SetInsertPoint(endBlock);
-//     PHINode *phiNode = Builder.CreatePHI(Type::getInt1Ty(TheContext), 2, "or_tmp");
-//     phiNode->addIncoming(lhs, Builder.GetInsertBlock());
-//     phiNode->addIncoming(rhs, rhsBlock);
-//     return phiNode;
-//   }
-
-//   // Generate and load the right-hand side
-//   Value* rhs = loadValue(RHS->codegen());
-//   if (!rhs) return nullptr;
-
-//   // Type conversion to ensure compatibility
-//   int lhsType = getOperandType(lhs);
-//   int rhsType = getOperandType(rhs);
-//   lhs = performWideningConversion(lhs, lhsType, rhsType);
-//   rhs = performWideningConversion(rhs, rhsType, lhsType);
-
-//   // Arithmetic and comparison operations
-//   if (Opcode == "+")
-//     return lhs->getType()->isFloatTy() ? Builder.CreateFAdd(lhs, rhs, "fadd_tmp") : Builder.CreateAdd(lhs, rhs, "add_tmp");
-//   else if (Opcode == "-")
-//     return lhs->getType()->isFloatTy() ? Builder.CreateFSub(lhs, rhs, "fsub_tmp") : Builder.CreateSub(lhs, rhs, "sub_tmp");
-//   else if (Opcode == "*")
-//     return lhs->getType()->isFloatTy() ? Builder.CreateFMul(lhs, rhs, "fmul_tmp") : Builder.CreateMul(lhs, rhs, "mul_tmp");
-//   else if (Opcode == "/") {
-//     if (rhs == ConstantInt::get(TheContext, APInt(32, 0)) || rhs == ConstantFP::get(TheContext, APFloat(0.0f))) {
-//       errs() << "Semantic error: Division by zero.\n";
-//       return nullptr;
-//     }
-//     return lhs->getType()->isFloatTy() ? Builder.CreateFDiv(lhs, rhs, "fdiv_tmp") : Builder.CreateSDiv(lhs, rhs, "div_tmp");
-//   }
-
-//   return nullptr; // Unsupported operation
-// }
 Value* BinaryExprASTnode::codegen() {
   // Generate and load the left-hand side operand
   Value* lhs = loadValue(LHS->codegen());
@@ -2358,11 +2230,10 @@ Value* BinaryExprASTnode::codegen() {
 
   // Handling assignment operator `=`
   if (Opcode == "=") {
-    // Only proceed if `LHS` is assignable (an `AllocaInst` or `GlobalVariable`)
     if (auto* AI = dyn_cast<AllocaInst>(LHS->codegen())) {
       // Perform any necessary type widening on `rhs`
       if (lhsType < rhsType) {
-        errs() << "Error: Cannot widen from RHS type " << getTypeString(rhs->getType())
+        errs() << "Semantic Error: Cannot widen from RHS type " << getTypeString(rhs->getType())
                << " to LHS type " << getTypeString(lhs->getType()) << ".\n";
         return nullptr;
       }
@@ -2370,14 +2241,14 @@ Value* BinaryExprASTnode::codegen() {
     } else if (auto* GV = dyn_cast<GlobalVariable>(LHS->codegen())) {
       return Builder.CreateStore(rhs, GV);
     }
-    errs() << "Error: LHS of assignment must be a variable.\n";
+    errs() << "Semantic Error: LHS of assignment must be a variable.\n";
     return nullptr;
   }
 
-  // Enforce boolean types for logical operators && and ||
+  // boolean types for logical operators && and ||
   if (Opcode == "&&" || Opcode == "||") {
     if (lhsType != 0 || rhsType != 0) {
-      errs() << "Error: Logical operators && and || require boolean operands.\n";
+      errs() << "Semantic Error: Logical operators && and || require boolean operands.\n";
       return nullptr;
     }
     return (Opcode == "&&") ? Builder.CreateAnd(lhs, rhs, "and_tmp") : Builder.CreateOr(lhs, rhs, "or_tmp");
@@ -2392,13 +2263,13 @@ Value* BinaryExprASTnode::codegen() {
     return lhs->getType()->isFloatTy() ? Builder.CreateFMul(lhs, rhs, "fmul_tmp") : Builder.CreateMul(lhs, rhs, "mul_tmp");
   } else if (Opcode == "/") {
     if (rhs == ConstantInt::get(TheContext, APInt(32, 0)) || rhs == ConstantFP::get(TheContext, APFloat(0.0f))) {
-      errs() << "Error: Division by zero.\n";
+      errs() << "Semantic Error: Division by zero.\n";
       return nullptr;
     }
     return lhs->getType()->isFloatTy() ? Builder.CreateFDiv(lhs, rhs, "fdiv_tmp") : Builder.CreateSDiv(lhs, rhs, "div_tmp");
   } else if (Opcode == "%") {
     if (rhs == ConstantInt::get(TheContext, APInt(32, 0))) {
-      errs() << "Error: Modulo by zero.\n";
+      errs() << "Semantic Error: Modulo by zero.\n";
       return nullptr;
     }
     return lhs->getType()->isFloatTy() ? Builder.CreateFRem(lhs, rhs, "fmod_tmp") : Builder.CreateSRem(lhs, rhs, "mod_tmp");
@@ -2417,60 +2288,13 @@ Value* BinaryExprASTnode::codegen() {
   }
 
   // Unsupported operator error
-  errs() << "Error: Unsupported binary operator '" << Opcode << "'.\n";
+  errs() << "Semantic Error: Unsupported binary operator '" << Opcode << "'.\n";
   return nullptr;
 }
 
 
 
-// Value* CallExprAST::codegen() {
-//   // Look up the function in the module.
-//   Function *CalleeF = TheModule->getFunction(Callee);
-//   if (!CalleeF) {
-//     // errs() << "Semantic error: Unknown function " << Callee << " referenced at line no. "
-//     //        << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
-//     errs() << "Semantic error: Unknown function " << Callee;
-//     return nullptr;
-//   }
 
-//   // Check if the number of arguments matches.
-//   if (CalleeF->arg_size() != Args.size()) {
-//     // errs() << "Semantic error: Incorrect number of arguments for function " << Callee
-//     //        << " at line no. " << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
-//         errs() << "Semantic error: Incorrect number of arguments for function " << Callee;
-//     return nullptr;
-//   }
-
-//   std::vector<Value *> ArgsV;
-//   for (unsigned i = 0, e = Args.size(); i != e; ++i) {
-//     Value* arg = loadValue(Args[i]->codegen());
-//     if (!arg) return nullptr;
-
-//     int argType = getOperandType(arg);
-//     Type* expectedType = CalleeF->getArg(i)->getType();
-//     int expectedTypeInt = getOperandType(CalleeF->getArg(i));
-
-//     // Perform widening conversion if necessary.
-//     if (argType != expectedTypeInt) {
-//       arg = performWideningConversion(arg, argType, expectedTypeInt);
-//       if (!arg) {
-//         errs() << "Semantic error: Cannot cast from `" << getTypeString(arg->getType())
-//                << "` to `" << getTypeString(expectedType) << "` at line no. ";
-//               //  << Tok.lineNo << " column no. " << Tok.columnNo << ".\n";
-//         return nullptr;
-//       }
-//     }
-
-//     ArgsV.push_back(arg);
-//   }
-
-//   // Create the function call.
-//   if (CalleeF->getReturnType()->isVoidTy()) {
-//     return Builder.CreateCall(CalleeF, ArgsV);
-//   } else {
-//     return Builder.CreateCall(CalleeF, ArgsV, "call_tmp");
-//   }
-// }
 
 
 
@@ -2534,18 +2358,65 @@ Value* IfExprAST::codegen() {
   // Generate the condition expression
   Value* cond = Cond->codegen();
   if (!cond) {
-    errs() << "Error: Condition of if statement could not be generated.\n";
+    errs() << "Semantic Error: If statement could not be generated.\n";
     return nullptr;
   }
 
   // Load the condition value if necessary
   cond = loadValue(cond);
 
+  // // Ensure the condition is a boolean type
+  // if (!cond->getType()->isIntegerTy(1)) {
+  //   errs() << "Error: If statement must be of boolean type.\n";
+  //   return nullptr;
+  // }
   // Ensure the condition is a boolean type
-  if (!cond->getType()->isIntegerTy(1)) {
-    errs() << "Error: Condition of if statement must be of boolean type.\n";
+// if (!cond->getType()->isIntegerTy(1)) {
+//   if (cond->getType()->isIntegerTy()) { // Check if it's an integer type
+//     auto bitWidth = cond->getType()->getIntegerBitWidth();
+//     auto zero = llvm::ConstantInt::get(cond->getType(), 0);
+//     auto isPositive = Builder.CreateICmpSGT(cond, zero, "is_positive");
+
+//     // Convert positive integers to 'true' and negative integers to 'false'
+//     cond = Builder.CreateSelect(
+//         isPositive,
+//         llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 1), // 'true'
+//         llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 0)  // 'false'
+//     );
+//   } else {
+//     errs() << "Error: If statement must be of boolean or integer type.\n";
+//     return nullptr;
+//   }
+// }
+// Ensure the condition is a boolean type
+if (!cond->getType()->isIntegerTy(1)) {
+  if (cond->getType()->isIntegerTy()) { // Check if it's an integer type
+    auto zero = llvm::ConstantInt::get(cond->getType(), 0);
+    auto isPositive = Builder.CreateICmpSGT(cond, zero, "is_positive");
+
+    // Convert positive integers to 'true' and negative integers to 'false'
+    cond = Builder.CreateSelect(
+        isPositive,
+        llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 1), // 'true'
+        llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 0)  // 'false'
+    );
+  } else if (cond->getType()->isFloatingPointTy()) { // Check if it's a floating-point type
+    auto zero = llvm::ConstantFP::get(cond->getType(), 0.0);
+    auto isPositive = Builder.CreateFCmpOGT(cond, zero, "is_positive");
+
+    // Convert positive floats to 'true' and negative floats to 'false'
+    cond = Builder.CreateSelect(
+        isPositive,
+        llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 1), // 'true'
+        llvm::ConstantInt::get(llvm::Type::getInt1Ty(TheContext), 0)  // 'false'
+    );
+  } else {
+    errs() << "Semantic Error: If statement must be of boolean, integer, or floating-point type.\n";
     return nullptr;
   }
+}
+
+
 
   // Create a comparison for the boolean condition
   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "if_cond");
@@ -2600,83 +2471,7 @@ Value* IfExprAST::codegen() {
 }
 
 
-// Value* IfExprAST::codegen() {
-//   // Check if else block exists
-//   bool elseExists = (Else != nullptr);
 
-//   // Get the parent function
-//   Function* TheFunction = Builder.GetInsertBlock()->getParent();
-
-//   // Create necessary basic blocks and associate them with the function
-//   BasicBlock* trueBlock = BasicBlock::Create(TheContext, "if_then", TheFunction);
-//   BasicBlock* falseBlock = elseExists ? BasicBlock::Create(TheContext, "if_else", TheFunction) : nullptr;
-//   BasicBlock* endBlock = BasicBlock::Create(TheContext, "if_end", TheFunction);
-
-//   // Generate the condition expression
-//   Value* cond = Cond->codegen();
-//   if (!cond)
-//     return nullptr;
-
-//   // Load the condition value if necessary
-//   cond = loadValue(cond);
-
-//   // Ensure the condition is a boolean type
-//   if (!cond->getType()->isIntegerTy(1)) {
-//     errs() << "Error: Condition of if statement must be of boolean type.\n";
-//     return nullptr;
-//   }
-
-//   // Create a comparison for the boolean condition
-//   Value* comp = Builder.CreateICmpNE(cond, ConstantInt::get(TheContext, APInt(1, 0)), "if_cond");
-
-//   // Create the conditional branch
-//   if (elseExists)
-//     Builder.CreateCondBr(comp, trueBlock, falseBlock);
-//   else
-//     Builder.CreateCondBr(comp, trueBlock, endBlock);
-
-//   // Generate code for the 'then' block
-//   Builder.SetInsertPoint(trueBlock);
-//   std::map<std::string, AllocaInst*> NamedValues_Then;
-//   NamedValuesList.push_back(NamedValues_Then);
-
-//   Value* thenVal = Then->codegen();
-//   if (!thenVal)
-//     return nullptr;
-
-//   // Branch to end block if no return statement was encountered
-//   if (!isa<ReturnInst>(thenVal)) {
-//     Builder.CreateBr(endBlock);
-//   }
-//   NamedValuesList.pop_back();
-
-//   // Generate code for the 'else' block if it exists
-//   if (elseExists) {
-//     Builder.SetInsertPoint(falseBlock);
-//     std::map<std::string, AllocaInst*> NamedValues_Else;
-//     NamedValuesList.push_back(NamedValues_Else);
-
-//     Value* elseVal = Else->codegen();
-//     if (!elseVal)
-//       return nullptr;
-
-//     if (!isa<ReturnInst>(elseVal)) {
-//       Builder.CreateBr(endBlock);
-//     }
-//     NamedValuesList.pop_back();
-//   }
-
-//   // Set the insertion point to the end block
-//   Builder.SetInsertPoint(endBlock);
-
-//   // Return nullptr for void functions
-//   if (TheFunction->getReturnType()->isVoidTy()) {
-//     return nullptr;
-//   }
-
-//   // Return an undefined value for other return types
-//   return UndefValue::get(TheFunction->getReturnType());
-// }
 
 
 
@@ -2699,9 +2494,7 @@ Value* WhileExprAST::codegen() {
   // Ensure the condition is of boolean type
   std::string currType = getTypeString(cond->getType());
   if (currType != "bool") {
-    errs() << "Semantic error: Expected type `bool` for the condition statement at line no. ";
-          //  << Cond->getTok().lineNo << " column no. " << Cond->getTok().columnNo
-          //  << ". Cannot cast from type `" << currType << "` to `bool`.\n";
+    errs() << "Semantic error: Expected type `bool` for the condition statement at";
     return nullptr;
   }
 
@@ -2734,38 +2527,45 @@ Value* WhileExprAST::codegen() {
   return ConstantPointerNull::get(PointerType::getUnqual(Type::getVoidTy(TheContext)));
 }
 
+
 Value* ReturnExprAST::codegen() {
   if (!ReturnExpr)
     return Builder.CreateRetVoid();
 
+  // Generate code for the return expression
   Value* returnExpr = ReturnExpr->codegen();
   if (!returnExpr)
     return nullptr;
 
+  // Load the value (dereference if it's a pointer)
   returnExpr = loadValue(returnExpr);
 
+  // Get the actual type of the return expression
   std::string actualType = getTypeString(returnExpr->getType());
-  // std::string correctType = FuncReturnType;
 
-  // Handle type mismatch with widening conversion if possible
-  // FIX THIS ------------------------------------------------------------------------------------------------------
-  // if (correctType != actualType) {
-  //   int fromType = getOperandType(returnExpr);
-  //   int toType = (correctType == "int") ? 1 : (correctType == "float") ? 2 : 0;
+  // Get the expected return type from the current function in scope
+  Function* currentFunction = Builder.GetInsertBlock()->getParent();
+  std::string correctType = getTypeString(currentFunction->getReturnType());
 
-  //   if (toType < fromType) {
-  //     errs() << "Semantic Error: Incorrect return type `" << actualType
-  //            << "` used at line no: " << Tok.lineNo << " column no: " << Tok.columnNo
-  //            << ". Cannot cast to expected return type `" << correctType << "`.\n";
-  //     return nullptr;
-  //   }
+  // Check for type mismatch
+  if (correctType != actualType) {
+    int fromType = getOperandType(returnExpr);
+    int toType = (correctType == "int") ? 1 : (correctType == "float") ? 2 : 0;
+
+    if (toType < fromType) {
+      errs() << "Semantic Error: Incorrect return type `" << actualType
+             << `". Cannot cast to expected return type `" << correctType << "`.\n";
+      return nullptr;
+    }
 
     // Perform widening conversion
-  //   returnExpr = performWideningConversion(returnExpr, fromType, toType);
-  // }
+    returnExpr = performWideningConversion(returnExpr, fromType, toType);
+  }
 
+  // Return the expression with proper type
   return Builder.CreateRet(returnExpr);
 }
+
 
 Value* GlobalVariableASTnode::codegen() {
   std::string ty = getType();
@@ -2789,9 +2589,8 @@ Value* GlobalVariableASTnode::codegen() {
 
   if (!GlobalVariables.insert({Val, g}).second) {
     std::string existTy = getTypeString(GlobalVariables[Val]->getValueType());
-    errs() << "Semantic error: Redefinition of global variable `" << Val << "` with type `" << ty;
-          //  << "` at line " << Tok.lineNo << " column " << Tok.columnNo << ". Variable of type `" << existTy
-          //  << "` already exists.\n";
+    errs() << "Semantic error: Redefinition of global variable `" << Val << "` with type `" << ty << "`";
+
     return nullptr;
   }
 
@@ -2799,10 +2598,17 @@ Value* GlobalVariableASTnode::codegen() {
 }
 
 
+
 Function* PrototypeAST::codegen() {
-  // Use the member `Type` directly for return type
   std::string ReturnType = Type;
   std::string origName = Name;
+
+  // Check if a function with the same name already exists
+    Function* ExistingFunction = TheModule->getFunction(origName);
+    if (ExistingFunction) {
+        errs() << "Semantic Error: Function '" << origName << "' is already defined.\n";
+        return nullptr;
+    }
 
   // Determine the return LLVM type
   llvm::Type* RetType = nullptr;
@@ -2816,9 +2622,10 @@ Function* PrototypeAST::codegen() {
     RetType = llvm::Type::getVoidTy(TheContext);
 
   if (!RetType) {
-    errs() << "Error: Unknown return type '" << ReturnType << "' for function '" << origName << "'.\n";
+    errs() << "Semantic Error: Unknown return type '" << ReturnType << "' for function '" << origName << "'.\n";
     return nullptr;
   }
+
 
   // Prepare argument types
   std::vector<llvm::Type*> ArgTypes;
@@ -2841,7 +2648,7 @@ Function* PrototypeAST::codegen() {
   // Create the function type
   llvm::FunctionType* FT = llvm::FunctionType::get(RetType, ArgTypes, false);
   llvm::Function* F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, origName, TheModule.get());
-
+  // NamedFuncs.push_back(origName);
   // Set names for all arguments
   unsigned Idx = 0;
   for (auto& Arg : F->args()) {
@@ -2852,13 +2659,23 @@ Function* PrototypeAST::codegen() {
   return F;
 }
 
+
 Function* FunctionAST::codegen() {
   // Retrieve or create the function definition from the prototype
   Function* TheFunction = TheModule->getFunction(Proto->getName());
-  if (!TheFunction)
-    TheFunction = Proto->codegen();
-  if (!TheFunction)
-    return nullptr;
+  // Check if the function already exists and is defined
+    if (TheFunction && !TheFunction->empty()) {
+        errs() << "Semantic Error: Function '" << Proto->getName() << "' is already defined.\n";
+        return nullptr;
+    }
+
+    // If the function is not found, create it from the prototype
+    if (!TheFunction)
+        TheFunction = Proto->codegen();
+
+    if (!TheFunction)
+        return nullptr;
+
 
   // Create the entry basic block and set the insertion point
   BasicBlock* BB = BasicBlock::Create(TheContext, "entry", TheFunction);
