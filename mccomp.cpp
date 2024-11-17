@@ -38,6 +38,7 @@ using namespace llvm::sys;
 
 FILE *pFile;
 static bool errorReported = false;
+static bool semanticError = false;
 
 //===----------------------------------------------------------------------===//
 // Lexer
@@ -625,7 +626,10 @@ public:
       virtual Value *codegen() override;
       virtual std::string to_string() const override {
   std::string out = "IfExpr:\n" + indent() + "Condition: " + Cond->to_string();
-  out.append("\n" + indent() + "Then:" + Then->to_string() + "\n"+indent()+"Else:" + Else->to_string());  
+  out.append("\n" + indent() + "Then:" + Then->to_string());
+  if (Else){
+    out.append("\n"+indent()+"Else:" + Else->to_string());
+  }  
   dedent();
   return out;
 };
@@ -2128,6 +2132,7 @@ Value *VariableRefASTnode::codegen() {
   if(!GV)
   {
     errs()<<"Semantic error: Unknown variable name: "<<Name<<".\n";
+    semanticError = true;
     return nullptr;
   }
   else 
@@ -2160,6 +2165,7 @@ Value *VariableASTnode::codegen() {
         errs() << "Semantic error: Redefinition of variable. " << Val
                << "\nVariable"  << Val << " of type " << existingType
                << " already exists within the current scope.\n";
+        semanticError = true;
         return nullptr;
     }
 
@@ -2188,6 +2194,7 @@ Value* UnaryExprASTnode::codegen() {
       return Builder.CreateNot(operand, "not_temp");
     else {
       errs() << "Semantic error: Cannot cast from `" << typeStr << "` to `bool`.\n";
+      semanticError = true;
       return nullptr;
     }
   } else if (Opcode == "-") {
@@ -2235,6 +2242,7 @@ Value* BinaryExprASTnode::codegen() {
       if (lhsType < rhsType) {
         errs() << "Semantic Error: Cannot widen from RHS type " << getTypeString(rhs->getType())
                << " to LHS type " << getTypeString(lhs->getType()) << ".\n";
+        semanticError = true;
         return nullptr;
       }
       return Builder.CreateStore(rhs, AI);
@@ -2242,6 +2250,7 @@ Value* BinaryExprASTnode::codegen() {
       return Builder.CreateStore(rhs, GV);
     }
     errs() << "Semantic Error: LHS of assignment must be a variable.\n";
+    semanticError = true;
     return nullptr;
   }
 
@@ -2249,6 +2258,7 @@ Value* BinaryExprASTnode::codegen() {
   if (Opcode == "&&" || Opcode == "||") {
     if (lhsType != 0 || rhsType != 0) {
       errs() << "Semantic Error: Logical operators && and || require boolean operands.\n";
+      semanticError = true;
       return nullptr;
     }
     return (Opcode == "&&") ? Builder.CreateAnd(lhs, rhs, "and_tmp") : Builder.CreateOr(lhs, rhs, "or_tmp");
@@ -2264,12 +2274,14 @@ Value* BinaryExprASTnode::codegen() {
   } else if (Opcode == "/") {
     if (rhs == ConstantInt::get(TheContext, APInt(32, 0)) || rhs == ConstantFP::get(TheContext, APFloat(0.0f))) {
       errs() << "Semantic Error: Division by zero.\n";
+      semanticError = true;
       return nullptr;
     }
     return lhs->getType()->isFloatTy() ? Builder.CreateFDiv(lhs, rhs, "fdiv_tmp") : Builder.CreateSDiv(lhs, rhs, "div_tmp");
   } else if (Opcode == "%") {
     if (rhs == ConstantInt::get(TheContext, APInt(32, 0))) {
       errs() << "Semantic Error: Modulo by zero.\n";
+      semanticError = true;
       return nullptr;
     }
     return lhs->getType()->isFloatTy() ? Builder.CreateFRem(lhs, rhs, "fmod_tmp") : Builder.CreateSRem(lhs, rhs, "mod_tmp");
@@ -2289,6 +2301,7 @@ Value* BinaryExprASTnode::codegen() {
 
   // Unsupported operator error
   errs() << "Semantic Error: Unsupported binary operator '" << Opcode << "'.\n";
+  semanticError = true;
   return nullptr;
 }
 
@@ -2303,12 +2316,14 @@ Value* CallExprAST::codegen() {
   Function *CalleeF = TheModule->getFunction(Callee);
   if (!CalleeF) {
     errs() << "Semantic error: Unknown function " << Callee << "\n";
+    semanticError = true;
     return nullptr;
   }
 
   // Check if the number of arguments matches.
   if (CalleeF->arg_size() != Args.size()) {
     errs() << "Semantic error: Incorrect number of arguments for function " << Callee << "\n";
+    semanticError = true;
     return nullptr;
   }
 
@@ -2327,6 +2342,7 @@ Value* CallExprAST::codegen() {
       if (!arg) {
         errs() << "Semantic error: Cannot cast from `" << getTypeString(arg->getType())
                << "` to `" << getTypeString(expectedType) << "`\n";
+        semanticError = true;
         return nullptr;
       }
     }
@@ -2359,6 +2375,7 @@ Value* IfExprAST::codegen() {
   Value* cond = Cond->codegen();
   if (!cond) {
     errs() << "Semantic Error: If statement could not be generated.\n";
+    semanticError = true;
     return nullptr;
   }
 
@@ -2412,6 +2429,7 @@ if (!cond->getType()->isIntegerTy(1)) {
     );
   } else {
     errs() << "Semantic Error: If statement must be of boolean, integer, or floating-point type.\n";
+    semanticError = true;
     return nullptr;
   }
 }
@@ -2468,7 +2486,7 @@ if (!cond->getType()->isIntegerTy(1)) {
 
   // Return an undefined value for other return types
   return UndefValue::get(TheFunction->getReturnType());
-}
+} 
 
 
 
@@ -2495,6 +2513,7 @@ Value* WhileExprAST::codegen() {
   std::string currType = getTypeString(cond->getType());
   if (currType != "bool") {
     errs() << "Semantic error: Expected type `bool` for the condition statement at";
+    semanticError = true;
     return nullptr;
   }
 
@@ -2554,7 +2573,8 @@ Value* ReturnExprAST::codegen() {
 
     if (toType < fromType) {
       errs() << "Semantic Error: Incorrect return type `" << actualType
-             << `". Cannot cast to expected return type `" << correctType << "`.\n";
+             << "`. Cannot cast to expected return type `" << correctType << "`.\n";
+      semanticError = true;
       return nullptr;
     }
 
@@ -2590,6 +2610,7 @@ Value* GlobalVariableASTnode::codegen() {
   if (!GlobalVariables.insert({Val, g}).second) {
     std::string existTy = getTypeString(GlobalVariables[Val]->getValueType());
     errs() << "Semantic error: Redefinition of global variable `" << Val << "` with type `" << ty << "`";
+    semanticError = true;
 
     return nullptr;
   }
@@ -2607,6 +2628,7 @@ Function* PrototypeAST::codegen() {
     Function* ExistingFunction = TheModule->getFunction(origName);
     if (ExistingFunction) {
         errs() << "Semantic Error: Function '" << origName << "' is already defined.\n";
+        semanticError = true;
         return nullptr;
     }
 
@@ -2623,6 +2645,7 @@ Function* PrototypeAST::codegen() {
 
   if (!RetType) {
     errs() << "Semantic Error: Unknown return type '" << ReturnType << "' for function '" << origName << "'.\n";
+    semanticError = true;
     return nullptr;
   }
 
@@ -2640,7 +2663,8 @@ Function* PrototypeAST::codegen() {
     else if (ArgType == "void")
       continue;
     else {
-      errs() << "Error: Unknown argument type '" << ArgType << "' in function '" << origName << "'.\n";
+      errs() << "Semantic Error: Unknown argument type '" << ArgType << "' in function '" << origName << "'.\n";
+      semanticError = true;
       return nullptr;
     }
   }
@@ -2664,8 +2688,15 @@ Function* FunctionAST::codegen() {
   // Retrieve or create the function definition from the prototype
   Function* TheFunction = TheModule->getFunction(Proto->getName());
   // Check if the function already exists and is defined
-    if (TheFunction && !TheFunction->empty()) {
+    // if (TheFunction && !TheFunction->empty()) {
+    //     errs() << "Semantic Error: Function '" << Proto->getName() << "' is already defined.\n";
+    //     semanticError = true;
+    //     return nullptr;
+    // }
+
+    if (TheFunction) {
         errs() << "Semantic Error: Function '" << Proto->getName() << "' is already defined.\n";
+        semanticError = true;
         return nullptr;
     }
 
@@ -2808,6 +2839,9 @@ int main(int argc, char **argv) {
   // getNextToken();
   parser();
   fprintf(stderr, "Parsing Finished\n");
+  if (semanticError){
+    return 1;
+}
 
   //********************* Start printing final IR **************************
   // Print out all of the generated code into a file called output.ll

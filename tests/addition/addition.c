@@ -14,4 +14,3 @@ int addition(int n, int m){
 
   return result;
 }
-
